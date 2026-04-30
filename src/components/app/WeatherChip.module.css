@@ -1,0 +1,39 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 245, 220, 0.04);
+  border: 1px solid var(--map-line);
+  color: var(--map-text);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.placeholder {
+  /* Match the populated chip's footprint while loading. */
+  width: 130px;
+  height: 32px;
+  background: transparent;
+  border-color: transparent;
+}
+
+.temp {
+  font-weight: 600;
+}
+
+.dot {
+  color: var(--map-text-mute);
+}
+
+.feels {
+  color: var(--map-text-mute);
+  font-size: 12px;
+  letter-spacing: 0;
+}

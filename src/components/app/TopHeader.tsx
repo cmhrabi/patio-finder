@@ -1,7 +1,9 @@
 'use client';
 
 import { useMemo } from 'react';
+import Link from 'next/link';
 import { Logo } from '@/components/Logo';
+import { WeatherChip } from './WeatherChip';
 import styles from './TopHeader.module.css';
 
 type Props = {
@@ -52,7 +54,9 @@ export function TopHeader({ patioCount, region = 'Downtown', selectedDate, onSel
   return (
     <header className={styles.root}>
       <div className={styles.brand}>
-        <Logo size={26} />
+        <Link href="/" className={styles.brandLink} aria-label="SunChaser — home">
+          <Logo size={26} />
+        </Link>
         <span className={styles.divider} aria-hidden="true" />
         <span className={['type-eyebrow', styles.region].join(' ')}>
           {region} · {patioCount} Patios
@@ -79,9 +83,12 @@ export function TopHeader({ patioCount, region = 'Downtown', selectedDate, onSel
         })}
       </nav>
 
-      <button type="button" aria-label="Account" className={styles.avatar}>
-        {userInitials}
-      </button>
+      <div className={styles.right}>
+        <WeatherChip />
+        <button type="button" aria-label="Account" className={styles.avatar}>
+          {userInitials}
+        </button>
+      </div>
     </header>
   );
 }

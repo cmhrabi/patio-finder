@@ -159,6 +159,17 @@ export default function AppShell() {
   const sunrise = dayTimes.sunrise && !isNaN(dayTimes.sunrise.getTime()) ? dayTimes.sunrise : null;
   const sunset = dayTimes.sunset && !isNaN(dayTimes.sunset.getTime()) ? dayTimes.sunset : null;
 
+  // Drive the Mapbox basemap light preset from the scrub position. We deliberately
+  // bucket into `dawn` / `day` / `dusk` rather than using `night` — the timeline
+  // is clamped to sunrise..sunset, so we never go outside daylight.
+  const basemapLightPreset = useMemo<'dawn' | 'day' | 'dusk'>(() => {
+    if (!sunrise || !sunset) return 'day';
+    const TRANSITION_MS = 75 * 60 * 1000; // 75-minute dawn / dusk windows
+    if (currentMs < sunrise.getTime() + TRANSITION_MS) return 'dawn';
+    if (currentMs > sunset.getTime() - TRANSITION_MS) return 'dusk';
+    return 'day';
+  }, [currentMs, sunrise, sunset]);
+
   // Clamp scrub time to the selected day's sunrise–sunset window. If the
   // selected day is "today" and now is between sunrise and sunset, default
   // to now; otherwise default to noon.
@@ -347,7 +358,9 @@ export default function AppShell() {
       <PatioMap
         ref={mapRef}
         initialViewState={DOWNTOWN_VIEW}
-        mapStyle="mapbox://styles/mapbox/dark-v11"
+        mapStyle="mapbox://styles/mapbox/standard"
+        basemapTheme="faded"
+        basemapLightPreset={basemapLightPreset}
       >
         <MapboxBuildingsSource />
         <BuildingsFromMap center={REPRESENTATIVE_POINT} onBuildings={handleBuildings} />
