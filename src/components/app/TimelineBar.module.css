@@ -3,9 +3,11 @@
   align-items: center;
   gap: var(--space-5);
   padding: var(--space-4) var(--space-6);
-  background: color-mix(in oklab, var(--map-panel) 75%, transparent);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
+  /* Opaque panel — no backdrop-filter. The thumb's per-tick `left` updates
+   * during playback used to force the browser to re-rasterise the blurred
+   * region every 200 ms, which Chromium rendered as a full-panel flicker.
+   * The map basemap is dim enough that we don't lose much by dropping it. */
+  background: color-mix(in oklab, var(--map-panel) 96%, transparent);
   border-radius: var(--radius-xl);
   border: 1px solid var(--map-line);
   color: var(--map-text);

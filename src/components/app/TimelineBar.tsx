@@ -129,13 +129,14 @@ export function TimelineBar({ sunrise, sunset, currentMs, onChange, onCommit, di
     }
   };
 
-  // Play: advance ~5min every 80ms (full sunrise→sunset run in ~14s for a 14h day).
+  // Play: advance ~3min every 200ms (full sunrise→sunset run in ~56s for a 14h day).
   useEffect(() => {
     if (!playing || !sunrise || !sunset) return;
+    const STEP_MS = 3 * 60 * 1000;
     const id = window.setInterval(() => {
-      onChange(Math.min(end, safeMs + 5 * 60 * 1000));
-      if (safeMs + 5 * 60 * 1000 >= end) setPlaying(false);
-    }, 80);
+      onChange(Math.min(end, safeMs + STEP_MS));
+      if (safeMs + STEP_MS >= end) setPlaying(false);
+    }, 200);
     return () => window.clearInterval(id);
   }, [playing, sunrise, sunset, safeMs, end, onChange]);
 
