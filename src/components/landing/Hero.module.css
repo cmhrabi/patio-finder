@@ -1,0 +1,130 @@
+.root {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-9);
+  align-items: center;
+  padding: var(--space-10) var(--space-7);
+  max-width: 1320px;
+  margin: 0 auto;
+}
+
+.copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 640px;
+}
+
+.headline {
+  margin: 0;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.lede {
+  margin: 0;
+  color: var(--ink-soft);
+  max-width: 520px;
+}
+
+.ctas {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+
+.primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--accent);
+  color: #fffaf0;
+  text-decoration: none;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 16px;
+  padding: 14px 24px;
+  border-radius: var(--radius-pill);
+  box-shadow: 0 12px 28px -14px color-mix(in oklab, var(--accent) 70%, transparent);
+  transition: background-color 160ms ease-out, transform 160ms ease-out;
+}
+
+.primary:hover {
+  background: var(--accent-2);
+  transform: translateY(-1px);
+}
+
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  color: var(--ink);
+  text-decoration: none;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 16px;
+  padding: 14px 22px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  transition: background-color 160ms ease-out, border-color 160ms ease-out;
+}
+
+.secondary:hover {
+  background: rgba(26, 35, 50, 0.04);
+  border-color: var(--ink-mute);
+}
+
+.stats {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-8);
+  margin: var(--space-6) 0 0;
+  padding: 0;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.statValue {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.statLabel {
+  color: var(--ink-mute);
+  margin: 0;
+}
+
+.visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 980px) {
+  .root {
+    grid-template-columns: 1fr;
+    gap: var(--space-7);
+    padding: var(--space-7) var(--space-5);
+  }
+  .visual {
+    order: -1;
+  }
+  .stats {
+    gap: var(--space-6);
+  }
+  .statValue {
+    font-size: 28px;
+  }
+}

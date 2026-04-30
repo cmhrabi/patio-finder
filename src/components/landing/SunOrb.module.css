@@ -1,0 +1,109 @@
+.wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 600px;
+  margin-inline: auto;
+}
+
+.orb {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  /*
+   * Layered backgrounds (top → bottom):
+   *  1. Soft cream highlight on the sun side, faked via a small radial.
+   *  2. Hard half-and-half split between the warm sun yellow and a deep olive shade.
+   * The split is biased ~10° from vertical to feel like a sun-shadow line, not
+   * a divided pie chart.
+   */
+  background:
+    radial-gradient(
+      ellipse 55% 45% at 30% 32%,
+      rgba(255, 250, 235, 0.55),
+      transparent 70%
+    ),
+    linear-gradient(
+      105deg,
+      var(--sun-300) 0%,
+      var(--sun-400) 49%,
+      #4d4626 50%,
+      #2f2a18 100%
+    );
+  box-shadow:
+    0 30px 80px -30px rgba(232, 154, 31, 0.4),
+    inset 0 -20px 60px -20px rgba(0, 0, 0, 0.25);
+}
+
+/* A second pass of warm glow that bleeds outside the circle */
+.glow {
+  position: absolute;
+  inset: -8%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 35%,
+    rgba(248, 191, 64, 0.25),
+    transparent 55%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
+.callout {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--paper);
+  border-radius: var(--radius-md);
+  padding: 8px 14px 8px 12px;
+  box-shadow:
+    0 1px 0 rgba(20, 30, 50, 0.04),
+    0 14px 36px -14px rgba(20, 30, 50, 0.22);
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: var(--sun-300);
+  box-shadow:
+    0 0 0 3px rgba(245, 185, 69, 0.18),
+    0 0 8px rgba(245, 185, 69, 0.4);
+  flex: 0 0 auto;
+}
+
+.calloutText {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.name {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.pct {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--ink-soft);
+  font-feature-settings: 'tnum';
+}
+
+.pctLabel {
+  color: var(--ink-mute);
+}
+
+@media (max-width: 900px) {
+  .wrap {
+    max-width: 360px;
+  }
+  .name {
+    font-size: 13px;
+  }
+}
