@@ -19,15 +19,19 @@ export function SunLightController({ azimuthDeg, altitudeDeg }: Props) {
     const polar = Math.max(0, Math.min(90, 90 - altitudeDeg));
     // Smooth ramp: 0 below the horizon, full above ~6°.
     const aboveHorizon = Math.max(0, Math.min(1, altitudeDeg / 6));
+    // Directional + ambient for tint, but no cast shadows. Mapbox's projected
+    // shadows came from the basemap building meshes, which don't align with
+    // our patio-level shadow predictions — so we'd rather render none than
+    // contradict ourselves.
     const lights = [
       {
         id: 'sun',
         type: 'directional',
         properties: {
-          'cast-shadows': true,
+          'cast-shadows': false,
           direction: [azimuthDeg, polar],
           intensity: 0.7 * aboveHorizon,
-          'shadow-intensity': 0.85,
+          'shadow-intensity': 0,
         },
       },
       {

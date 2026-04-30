@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MapRef } from 'react-map-gl/mapbox';
 import PatioMap from './PatioMap';
 import { VenuesLayer } from './VenuesLayer';
-import { SunLightController } from './SunLightController';
 import { TopHeader } from './app/TopHeader';
 import { TimePill } from './app/TimePill';
 import { TimelineBar } from './app/TimelineBar';
@@ -190,14 +189,6 @@ export default function AppShell() {
   const sunrise = dayTimes.sunrise && !isNaN(dayTimes.sunrise.getTime()) ? dayTimes.sunrise : null;
   const sunset = dayTimes.sunset && !isNaN(dayTimes.sunset.getTime()) ? dayTimes.sunset : null;
 
-  const basemapLightPreset = useMemo<'dawn' | 'day' | 'dusk'>(() => {
-    if (!sunrise || !sunset) return 'day';
-    const TRANSITION_MS = 75 * 60 * 1000;
-    if (currentMs < sunrise.getTime() + TRANSITION_MS) return 'dawn';
-    if (currentMs > sunset.getTime() - TRANSITION_MS) return 'dusk';
-    return 'day';
-  }, [currentMs, sunrise, sunset]);
-
   useEffect(() => {
     if (!sunrise || !sunset) return;
     setCurrentMs((prev) => {
@@ -273,33 +264,6 @@ export default function AppShell() {
     return best;
   }, [activeVenue, seriesByPatio]);
 
-  // Active venue → use its sunniest patio's current sample to drive the 3D
-  // map's lighting. Aligns the world-shadows with the polygon the user picked.
-  const activeSample = useMemo<SunSample | null>(() => {
-    if (!activeVenueId) return null;
-    const venue = venues.find((v) => v.id === activeVenueId);
-    if (!venue) return null;
-    let bestSample: SunSample | null = null;
-    let bestSun = -1;
-    for (const p of venue.patios) {
-      const series = seriesByPatio[p.id];
-      if (!series || series.length === 0) continue;
-      let s = series[0];
-      let sd = Math.abs(s.time.getTime() - currentMs);
-      for (let i = 1; i < series.length; i++) {
-        const d = Math.abs(series[i].time.getTime() - currentMs);
-        if (d < sd) {
-          s = series[i];
-          sd = d;
-        }
-      }
-      if (s.sunFraction > bestSun) {
-        bestSun = s.sunFraction;
-        bestSample = s;
-      }
-    }
-    return bestSample;
-  }, [activeVenueId, venues, seriesByPatio, currentMs]);
 
   /** Fly the map to a venue's location at a closer zoom + tilted angle. */
   const flyToVenue = useCallback((venue: Venue) => {
@@ -405,7 +369,6 @@ export default function AppShell() {
         initialViewState={DOWNTOWN_VIEW}
         mapStyle="mapbox://styles/mapbox/standard"
         basemapTheme="faded"
-        basemapLightPreset={basemapLightPreset}
       >
         <VenuesLayer
           venues={filteredVenues}
@@ -414,12 +377,6 @@ export default function AppShell() {
           activeVenueId={activeVenueId}
           onSelectVenue={handleSelectVenue}
         />
-        {activeSample && (
-          <SunLightController
-            azimuthDeg={activeSample.azimuthDeg}
-            altitudeDeg={activeSample.altitudeDeg}
-          />
-        )}
         <div className={styles.controlsSlot}>
           <MapControls onRecenter={flyToOverview} showRecenter={!!activeVenueId} />
         </div>
