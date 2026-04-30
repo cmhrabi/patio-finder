@@ -1,15 +1,28 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import Map from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
-const TORONTO = {
+export type PatioMapProps = {
+  initialViewState?: {
+    longitude: number;
+    latitude: number;
+    zoom?: number;
+    pitch?: number;
+    bearing?: number;
+  };
+  mapStyle?: string;
+  children?: ReactNode;
+};
+
+const DEFAULT_VIEW = {
   longitude: -79.3832,
   latitude: 43.6532,
   zoom: 12,
 };
 
-export default function PatioMap() {
+export default function PatioMap({ initialViewState, mapStyle, children }: PatioMapProps) {
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
   if (!token) {
@@ -25,9 +38,12 @@ export default function PatioMap() {
   return (
     <Map
       mapboxAccessToken={token}
-      initialViewState={TORONTO}
-      mapStyle="mapbox://styles/mapbox/streets-v12"
+      initialViewState={initialViewState ?? DEFAULT_VIEW}
+      mapStyle={mapStyle ?? 'mapbox://styles/mapbox/standard'}
       style={{ width: '100%', height: '100%' }}
-    />
+      antialias
+    >
+      {children}
+    </Map>
   );
 }
