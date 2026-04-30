@@ -8,7 +8,7 @@ import { Star } from '@/components/Star';
 import { SunRating } from '@/components/SunRating';
 import { Toggle } from '@/components/Toggle';
 import { Stack } from '@/components/layout/Stack';
-import { NEIGHBOURHOODS, type Neighbourhood, type Patio } from '@/lib/patios/types';
+import { NEIGHBOURHOODS, type Neighbourhood, type Venue } from '@/lib/patios/types';
 import styles from './RankingPanel.module.css';
 
 export type RankingTab = 'ranking' | 'all' | 'saved' | 'filters';
@@ -27,15 +27,15 @@ export const emptyFilters = (): Filters => ({
   hoods: new Set(),
 });
 
-export type RankedPatio = {
-  patio: Patio;
-  /** 0..100 sun coverage at the active time. Null while still computing. */
+export type RankedVenue = {
+  venue: Venue;
+  /** 0..100 sun coverage at the active time — best across the venue's patios. */
   sunPct: number | null;
 };
 
 type Props = {
   /** Already filtered + sorted (descending sun) by the parent. */
-  ranked: RankedPatio[];
+  ranked: RankedVenue[];
   totalCount: number;
   activeId: string | null;
   favouriteIds: ReadonlySet<string>;
@@ -167,7 +167,7 @@ function ListTab({
   onClose,
 }: {
   tab: RankingTab;
-  ranked: RankedPatio[];
+  ranked: RankedVenue[];
   activeId: string | null;
   favouriteIds: ReadonlySet<string>;
   timeLabel: string;
@@ -177,15 +177,15 @@ function ListTab({
 }) {
   let eyebrow = 'Sunny right now';
   let heading = `Ranked at ${timeLabel}`;
-  let emptyMessage = 'No patios match yet.';
+  let emptyMessage = 'No venues match yet.';
   if (tab === 'all') {
     eyebrow = 'Browse';
-    heading = 'All patios';
-    emptyMessage = 'No patios in this area.';
+    heading = 'All venues';
+    emptyMessage = 'No venues in this area.';
   } else if (tab === 'saved') {
     eyebrow = 'Your shortlist';
     heading = 'Saved';
-    emptyMessage = 'Tap the star on a patio to save it.';
+    emptyMessage = 'Tap the star on a venue to save it.';
   }
 
   return (
@@ -215,23 +215,24 @@ function ListTab({
         <ol className={styles.list}>
           {ranked.map((r, i) => {
             const showRank = tab === 'ranking';
-            const fav = favouriteIds.has(r.patio.id);
-            const active = r.patio.id === activeId;
+            const fav = favouriteIds.has(r.venue.id);
+            const active = r.venue.id === activeId;
+            const patioCount = r.venue.patios.length;
             return (
               <li
-                key={r.patio.id}
+                key={r.venue.id}
                 className={[styles.row, active && styles.rowActive].filter(Boolean).join(' ')}
               >
                 <button
                   type="button"
-                  onClick={() => onSelect(r.patio.id)}
+                  onClick={() => onSelect(r.venue.id)}
                   className={styles.rowInner}
                   aria-pressed={active}
                 >
-                  {r.patio.photo ? (
+                  {r.venue.photo ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={r.patio.photo}
+                      src={r.venue.photo}
                       alt=""
                       className={styles.thumb}
                       loading="lazy"
@@ -246,10 +247,13 @@ function ListTab({
                       {showRank ? (
                         <span className={styles.rank}>{String(i + 1).padStart(2, '0')}</span>
                       ) : null}
-                      <span className={styles.name}>{r.patio.name}</span>
+                      <span className={styles.name}>{r.venue.name}</span>
                     </div>
                     <div className={styles.rowMeta}>
-                      <span className={styles.hood}>{r.patio.hood ?? '—'}</span>
+                      <span className={styles.hood}>{r.venue.hood ?? '—'}</span>
+                      {patioCount > 1 ? (
+                        <span className={styles.hood}>· {patioCount} patios</span>
+                      ) : null}
                       <SunRating value={r.sunPct ?? 0} size={8} hideLabel />
                       {r.sunPct !== null ? (
                         <span className={styles.pct}>{Math.round(r.sunPct)}%</span>
@@ -261,7 +265,7 @@ function ListTab({
                 </button>
                 <Star
                   pressed={fav}
-                  onChange={() => onToggleFavourite(r.patio.id)}
+                  onChange={() => onToggleFavourite(r.venue.id)}
                   size={18}
                   className={styles.star}
                 />
@@ -321,9 +325,9 @@ function FiltersTab({
           type="search"
           value={filters.search}
           onChange={(e) => setFilters((p) => ({ ...p, search: e.target.value }))}
-          placeholder="Search patios or neighbourhoods…"
+          placeholder="Search venues or neighbourhoods…"
           className={styles.searchInput}
-          aria-label="Search patios or neighbourhoods"
+          aria-label="Search venues or neighbourhoods"
         />
       </div>
 

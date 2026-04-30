@@ -1,15 +1,13 @@
-import type { Patio } from './types';
+import type { Venue } from './types';
 
 /**
- * Fetch the canonical patio list from the DB-backed API route.
- *
- * No localStorage caching, no merging — Supabase is the single source of truth.
- * If you need offline cache, layer it on top of this rather than baking it in here.
+ * Fetch the canonical venue list (with embedded patios) from the DB-backed API
+ * route. No localStorage caching — Supabase is the single source of truth.
  */
-export async function fetchPatios(): Promise<Patio[]> {
-  const res = await fetch('/api/patios', { cache: 'no-store' });
-  if (!res.ok) throw new Error(`fetch /api/patios failed: ${res.status}`);
-  const data = (await res.json()) as Patio[] | { error: string };
+export async function fetchVenues(): Promise<Venue[]> {
+  const res = await fetch('/api/venues', { cache: 'no-store' });
+  if (!res.ok) throw new Error(`fetch /api/venues failed: ${res.status}`);
+  const data = (await res.json()) as Venue[] | { error: string };
   if (!Array.isArray(data)) throw new Error(data.error ?? 'unknown error');
   return data;
 }
@@ -26,6 +24,6 @@ export function clearLegacyPatioCache(): void {
   try {
     window.localStorage.removeItem(LEGACY_KEY);
   } catch {
-    // ignore — quota/security errors don't matter for a one-shot cleanup
+    // ignore
   }
 }

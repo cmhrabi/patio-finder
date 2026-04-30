@@ -1,6 +1,6 @@
 import 'server-only';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { NEIGHBOURHOODS, type Neighbourhood, type Patio } from './types';
+import { NEIGHBOURHOODS, type Neighbourhood, type Venue, type VenuePatio } from './types';
 
 type VenueGeoRow = {
   id: string;
@@ -8,6 +8,8 @@ type VenueGeoRow = {
   neighborhood: string | null;
   hours: Record<string, Array<[string, string]>> | null;
   food: boolean;
+  lng: number;
+  lat: number;
 };
 
 type PatioGeoRow = {
@@ -24,8 +26,7 @@ const TZ = 'America/Toronto';
  * Map a free-form DB `neighborhood` string to one of the canonical 8 the filter UI
  * knows about. Hyphens are folded to spaces and casing is ignored, so DB values like
  * `"Trinity-Bellwoods"` or `"trinity bellwoods"` both resolve to `"Trinity Bellwoods"`.
- * Anything we don't recognise becomes `undefined` (the patio still appears, just
- * without a hood pill, and won't be matched by the neighbourhood filter).
+ * Anything we don't recognise becomes `undefined`.
  */
 function normaliseHood(raw: string | null | undefined): Neighbourhood | undefined {
   if (!raw) return undefined;
@@ -58,11 +59,10 @@ function isOpenNow(hours: Record<string, Array<[string, string]>> | null): boole
 }
 
 /**
- * List every patio in the DB, joined with its venue, mapped to the shape the
- * landing + map UI expects. Public read RLS lets this run with the publishable
- * key — no service role needed.
+ * Fetch every venue with its attached patios. Drops venues that have zero
+ * usable patios (no polygon ⇒ nothing to rank, nothing to render).
  */
-export async function listPatiosFromDb(): Promise<Patio[]> {
+export async function listVenuesFromDb(): Promise<Venue[]> {
   const supabase = await createSupabaseServerClient();
 
   const [patiosRes, venuesRes] = await Promise.all([
@@ -72,30 +72,42 @@ export async function listPatiosFromDb(): Promise<Patio[]> {
       .returns<PatioGeoRow[]>(),
     supabase
       .from('venues_geo')
-      .select('id, name, neighborhood, hours, food')
+      .select('id, name, neighborhood, hours, food, lng, lat')
       .returns<VenueGeoRow[]>(),
   ]);
 
   if (patiosRes.error) throw new Error(`patios_geo: ${patiosRes.error.message}`);
   if (venuesRes.error) throw new Error(`venues_geo: ${venuesRes.error.message}`);
 
-  const venuesById = new Map((venuesRes.data ?? []).map((v) => [v.id, v]));
-
-  const out: Patio[] = [];
+  // Group patios by venue_id, keeping only those with a valid polygon.
+  const patiosByVenue = new Map<string, VenuePatio[]>();
   for (const p of patiosRes.data ?? []) {
-    const venue = venuesById.get(p.venue_id);
-    if (!venue) continue;
     const polygon = p.area_geojson;
     if (!polygon || polygon.type !== 'Polygon') continue;
+    const list = patiosByVenue.get(p.venue_id);
+    const entry: VenuePatio = { id: p.id, label: p.label, polygon };
+    if (list) list.push(entry);
+    else patiosByVenue.set(p.venue_id, [entry]);
+  }
+
+  const out: Venue[] = [];
+  for (const v of venuesRes.data ?? []) {
+    const patios = patiosByVenue.get(v.id);
+    if (!patios || patios.length === 0) continue;
     out.push({
-      id: p.id,
-      name: venue.name,
-      polygon,
-      createdAt: p.created_at,
-      hood: normaliseHood(venue.neighborhood),
-      openNow: isOpenNow(venue.hours),
-      // Patios in the DB are outdoor seating areas by definition.
+      id: v.id,
+      name: v.name,
+      lng: v.lng,
+      lat: v.lat,
+      hood: normaliseHood(v.neighborhood),
+      openNow: isOpenNow(v.hours),
       hasOutdoorSeating: true,
+      patios,
+      // Use the earliest patio's createdAt as the venue's "tracked since".
+      createdAt: patios[0]
+        ? (patiosRes.data ?? []).find((p) => p.id === patios[0].id)?.created_at ??
+          new Date().toISOString()
+        : new Date().toISOString(),
     });
   }
   return out;

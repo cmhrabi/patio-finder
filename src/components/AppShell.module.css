@@ -22,10 +22,15 @@
 
 .panelSlot {
   position: absolute;
-  /* var(--space-4) header gap + ~76px header height + var(--space-5) margin */
+  /* Top: edge gap + ~76px header height + breathing-room margin.
+   * Bottom: edge gap + ~96px timeline height + same breathing-room margin.
+   * Anchoring both edges (instead of capping max-height) means the panel always
+   * fills the available middle of the screen and its body scrolls internally. */
   top: calc(var(--space-4) + 76px + var(--space-5));
+  bottom: calc(var(--space-4) + 96px + var(--space-5));
   left: var(--space-4);
   z-index: 4;
+  display: flex;
 }
 
 .panelOpener {

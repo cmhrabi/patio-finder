@@ -5,7 +5,7 @@ import type { MapRef } from 'react-map-gl/mapbox';
 import PatioMap from './PatioMap';
 import { MapboxBuildingsSource } from './MapboxBuildingsSource';
 import { BuildingsFromMap } from './BuildingsFromMap';
-import { PatiosLayer } from './PatiosLayer';
+import { VenuesLayer } from './VenuesLayer';
 import { SunLightController } from './SunLightController';
 import { TopHeader } from './app/TopHeader';
 import { TimePill } from './app/TimePill';
@@ -16,11 +16,11 @@ import {
   emptyFilters,
   type Filters,
   type RankingTab,
-  type RankedPatio,
+  type RankedVenue,
 } from './app/RankingPanel';
 import { useFavourites } from '@/hooks/useFavourites';
-import { clearLegacyPatioCache, fetchPatios } from '@/lib/patios/storage';
-import type { Patio } from '@/lib/patios/types';
+import { clearLegacyPatioCache, fetchVenues } from '@/lib/patios/storage';
+import type { Venue } from '@/lib/patios/types';
 import { getDayTimes } from '@/lib/sun/sunPosition';
 import { computeSeries } from '@/lib/sun/timeSeries';
 import type { Building, LngLat, SunSample } from '@/lib/sun/types';
@@ -102,8 +102,6 @@ function setSameTimeOfDay(day: Date, time: Date): Date {
     day: '2-digit',
   }).format(day);
   const [y, m, d] = ymd.split('-').map(Number);
-  // Anchor at 00:00 UTC of the calendar day, then derive Toronto-midnight UTC,
-  // then add the time-of-day offset. Use the offset trick used in TimelineBar:
   const utcMidnightGuess = new Date(Date.UTC(y, m - 1, d, 0, 0, 0));
   const obs = Number(
     new Intl.DateTimeFormat('en-CA', { timeZone: TZ, hour: '2-digit', hour12: false })
@@ -116,9 +114,9 @@ function setSameTimeOfDay(day: Date, time: Date): Date {
 const REPRESENTATIVE_POINT: LngLat = [DOWNTOWN_VIEW.longitude, DOWNTOWN_VIEW.latitude];
 
 export default function AppShell() {
-  const [patios, setPatios] = useState<Patio[]>([]);
+  const [venues, setVenues] = useState<Venue[]>([]);
   const [buildings, setBuildings] = useState<Building[] | null>(null);
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeVenueId, setActiveVenueId] = useState<string | null>(null);
   const [tab, setTab] = useState<RankingTab>('ranking');
   const [filters, setFilters] = useState<Filters>(() => emptyFilters());
   const [panelOpen, setPanelOpen] = useState(true);
@@ -129,20 +127,18 @@ export default function AppShell() {
   const { favourites, toggle: toggleFavourite } = useFavourites();
   const mapRef = useRef<MapRef | null>(null);
 
-  // Hydrate patios from the DB. Also wipe the legacy localStorage cache from
-  // the pre-DB DrawControl flow — it would otherwise inject stale stub patios
-  // back into the merge on every reload.
+  // Hydrate venues from the DB. Also wipe the legacy localStorage cache from
+  // the pre-DB DrawControl flow.
   useEffect(() => {
     clearLegacyPatioCache();
     let cancelled = false;
-    void fetchPatios()
+    void fetchVenues()
       .then((next) => {
-        if (!cancelled) setPatios(next);
+        if (!cancelled) setVenues(next);
       })
       .catch((e) => {
-        // Surface to the console so it shows in dev; don't crash the UI.
         // eslint-disable-next-line no-console
-        console.error('Failed to load patios:', e);
+        console.error('Failed to load venues:', e);
       });
     return () => {
       cancelled = true;
@@ -151,7 +147,6 @@ export default function AppShell() {
 
   const handleBuildings = useCallback((bs: Building[]) => setBuildings(bs), []);
 
-  // Sunrise/sunset for the selected date — derived from the city centre.
   const dayTimes = useMemo(
     () => getDayTimes(date, REPRESENTATIVE_POINT[1], REPRESENTATIVE_POINT[0]),
     [date],
@@ -159,20 +154,14 @@ export default function AppShell() {
   const sunrise = dayTimes.sunrise && !isNaN(dayTimes.sunrise.getTime()) ? dayTimes.sunrise : null;
   const sunset = dayTimes.sunset && !isNaN(dayTimes.sunset.getTime()) ? dayTimes.sunset : null;
 
-  // Drive the Mapbox basemap light preset from the scrub position. We deliberately
-  // bucket into `dawn` / `day` / `dusk` rather than using `night` — the timeline
-  // is clamped to sunrise..sunset, so we never go outside daylight.
   const basemapLightPreset = useMemo<'dawn' | 'day' | 'dusk'>(() => {
     if (!sunrise || !sunset) return 'day';
-    const TRANSITION_MS = 75 * 60 * 1000; // 75-minute dawn / dusk windows
+    const TRANSITION_MS = 75 * 60 * 1000;
     if (currentMs < sunrise.getTime() + TRANSITION_MS) return 'dawn';
     if (currentMs > sunset.getTime() - TRANSITION_MS) return 'dusk';
     return 'day';
   }, [currentMs, sunrise, sunset]);
 
-  // Clamp scrub time to the selected day's sunrise–sunset window. If the
-  // selected day is "today" and now is between sunrise and sunset, default
-  // to now; otherwise default to noon.
   useEffect(() => {
     if (!sunrise || !sunset) return;
     setCurrentMs((prev) => {
@@ -182,99 +171,107 @@ export default function AppShell() {
     });
   }, [sunrise, sunset]);
 
-  // Compute series for every patio at this date. The internal cache means
-  // repeated calls (different scrub times, same date) are free.
+  // Compute series for every patio (across all venues) at this date.
   const seriesByPatio = useMemo(() => {
     const out: Record<string, SunSample[]> = {};
     if (!buildings) return out;
-    for (const p of patios) {
-      out[p.id] = computeSeries({
-        patioId: p.id,
-        patio: p.polygon,
-        buildings,
-        date,
-      });
+    for (const v of venues) {
+      for (const p of v.patios) {
+        out[p.id] = computeSeries({
+          patioId: p.id,
+          patio: p.polygon,
+          buildings,
+          date,
+        });
+      }
     }
     return out;
-  }, [patios, buildings, date]);
+  }, [venues, buildings, date]);
 
-  // For each patio, find the sample closest to currentMs and convert sunFraction → 0..100.
+  // Per-patio sun% at the active scrub time. Drives the active venue's
+  // patio-polygon colours on the map.
   const sunPctByPatio = useMemo<Record<string, number | null>>(() => {
     const out: Record<string, number | null> = {};
-    for (const p of patios) {
-      const series = seriesByPatio[p.id];
-      if (!series || series.length === 0) {
-        out[p.id] = null;
-        continue;
-      }
-      // Binary search for closest time would be ideal; linear is fine for ~180 samples.
-      let best = series[0];
-      let bestDelta = Math.abs(best.time.getTime() - currentMs);
-      for (let i = 1; i < series.length; i++) {
-        const delta = Math.abs(series[i].time.getTime() - currentMs);
-        if (delta < bestDelta) {
-          best = series[i];
-          bestDelta = delta;
+    for (const v of venues) {
+      for (const p of v.patios) {
+        const series = seriesByPatio[p.id];
+        if (!series || series.length === 0) {
+          out[p.id] = null;
+          continue;
         }
+        let best = series[0];
+        let bestDelta = Math.abs(best.time.getTime() - currentMs);
+        for (let i = 1; i < series.length; i++) {
+          const delta = Math.abs(series[i].time.getTime() - currentMs);
+          if (delta < bestDelta) {
+            best = series[i];
+            bestDelta = delta;
+          }
+        }
+        out[p.id] = best.sunFraction * 100;
       }
-      out[p.id] = best.sunFraction * 100;
     }
     return out;
-  }, [patios, seriesByPatio, currentMs]);
+  }, [venues, seriesByPatio, currentMs]);
 
-  // Active patio's current sample drives the 3D map's lighting.
+  // Per-venue sun% — the sunniest of the venue's patios. Drives the dot colour
+  // on the map and the ranking percentage in the list.
+  const sunPctByVenue = useMemo<Record<string, number | null>>(() => {
+    const out: Record<string, number | null> = {};
+    for (const v of venues) {
+      let best: number | null = null;
+      for (const p of v.patios) {
+        const pct = sunPctByPatio[p.id];
+        if (pct == null) continue;
+        if (best == null || pct > best) best = pct;
+      }
+      out[v.id] = best;
+    }
+    return out;
+  }, [venues, sunPctByPatio]);
+
+  // Active venue → use its sunniest patio's current sample to drive the 3D
+  // map's lighting. Aligns the world-shadows with the polygon the user picked.
   const activeSample = useMemo<SunSample | null>(() => {
-    if (!activeId) return null;
-    const series = seriesByPatio[activeId];
-    if (!series || series.length === 0) return null;
-    let best = series[0];
-    let bestDelta = Math.abs(best.time.getTime() - currentMs);
-    for (let i = 1; i < series.length; i++) {
-      const delta = Math.abs(series[i].time.getTime() - currentMs);
-      if (delta < bestDelta) {
-        best = series[i];
-        bestDelta = delta;
+    if (!activeVenueId) return null;
+    const venue = venues.find((v) => v.id === activeVenueId);
+    if (!venue) return null;
+    let bestSample: SunSample | null = null;
+    let bestSun = -1;
+    for (const p of venue.patios) {
+      const series = seriesByPatio[p.id];
+      if (!series || series.length === 0) continue;
+      let s = series[0];
+      let sd = Math.abs(s.time.getTime() - currentMs);
+      for (let i = 1; i < series.length; i++) {
+        const d = Math.abs(series[i].time.getTime() - currentMs);
+        if (d < sd) {
+          s = series[i];
+          sd = d;
+        }
+      }
+      if (s.sunFraction > bestSun) {
+        bestSun = s.sunFraction;
+        bestSample = s;
       }
     }
-    return best;
-  }, [activeId, seriesByPatio, currentMs]);
+    return bestSample;
+  }, [activeVenueId, venues, seriesByPatio, currentMs]);
 
-  // No auto-select: the map stays flat with all patios visible until the user picks one.
-
-  /** Fly the map to a patio's centroid at a closer zoom + tilted angle. */
-  const flyToPatio = useCallback(
-    (patio: Patio) => {
-      const map = mapRef.current;
-      if (!map) return;
-      const ring = patio.polygon.coordinates[0];
-      if (!ring || ring.length === 0) return;
-      // Average the ring's vertices, ignoring the closing duplicate point.
-      let sx = 0;
-      let sy = 0;
-      let n = 0;
-      const last = ring.length - 1;
-      const stop =
-        ring.length > 1 && ring[0][0] === ring[last][0] && ring[0][1] === ring[last][1]
-          ? last
-          : ring.length;
-      for (let i = 0; i < stop; i++) {
-        sx += ring[i][0];
-        sy += ring[i][1];
-        n++;
-      }
-      if (n === 0) return;
-      map.flyTo({
-        center: [sx / n, sy / n],
-        zoom: 17,
-        pitch: FOCUSED_PITCH,
-        bearing: FOCUSED_BEARING,
-        speed: 1.4,
-        curve: 1.6,
-        essential: true,
-      });
-    },
-    [],
-  );
+  /** Fly the map to a venue's location at a closer zoom + tilted angle. */
+  const flyToVenue = useCallback((venue: Venue) => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.flyTo({
+      center: [venue.lng, venue.lat],
+      zoom: 17,
+      pitch: FOCUSED_PITCH,
+      bearing: FOCUSED_BEARING,
+      speed: 1.4,
+      curve: 1.6,
+      essential: true,
+    });
+  }, []);
 
   /** Ease the camera back to the flat overview. */
   const flyToOverview = useCallback(() => {
@@ -291,57 +288,56 @@ export default function AppShell() {
     });
   }, []);
 
-  const handleSelectPatio = useCallback(
+  const handleSelectVenue = useCallback(
     (id: string) => {
-      // Toggle off if the user clicks the already-active patio.
-      if (id === activeId) {
-        setActiveId(null);
+      // Toggle off if the user clicks the already-active venue.
+      if (id === activeVenueId) {
+        setActiveVenueId(null);
         flyToOverview();
         return;
       }
-      setActiveId(id);
-      const patio = patios.find((p) => p.id === id);
-      if (patio) flyToPatio(patio);
+      setActiveVenueId(id);
+      const venue = venues.find((v) => v.id === id);
+      if (venue) flyToVenue(venue);
     },
-    [activeId, patios, flyToPatio, flyToOverview],
+    [activeVenueId, venues, flyToVenue, flyToOverview],
   );
 
-  // Filtering pipeline.
-  const filteredPatios = useMemo(() => {
+  // Filtering pipeline — operates on venues now.
+  const filteredVenues = useMemo(() => {
     const q = filters.search.trim().toLowerCase();
-    return patios.filter((p) => {
-      if (filters.openNow && !p.openNow) return false;
-      if (filters.outdoorOnly && !p.hasOutdoorSeating) return false;
-      if (filters.hoods.size > 0 && (!p.hood || !filters.hoods.has(p.hood))) return false;
+    return venues.filter((v) => {
+      if (filters.openNow && !v.openNow) return false;
+      if (filters.outdoorOnly && !v.hasOutdoorSeating) return false;
+      if (filters.hoods.size > 0 && (!v.hood || !filters.hoods.has(v.hood))) return false;
       if (q) {
-        const hay = `${p.name} ${p.hood ?? ''}`.toLowerCase();
+        const hay = `${v.name} ${v.hood ?? ''}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [patios, filters]);
+  }, [venues, filters]);
 
-  // Rows shown in the current tab (excludes filters tab — that has its own UI).
-  const rows = useMemo<RankedPatio[]>(() => {
-    let pool = filteredPatios;
-    if (tab === 'saved') pool = pool.filter((p) => favourites.has(p.id));
-    const annotated: RankedPatio[] = pool.map((p) => ({ patio: p, sunPct: sunPctByPatio[p.id] ?? null }));
+  const rows = useMemo<RankedVenue[]>(() => {
+    let pool = filteredVenues;
+    if (tab === 'saved') pool = pool.filter((v) => favourites.has(v.id));
+    const annotated: RankedVenue[] = pool.map((v) => ({
+      venue: v,
+      sunPct: sunPctByVenue[v.id] ?? null,
+    }));
     if (tab === 'ranking') {
       annotated.sort((a, b) => (b.sunPct ?? -1) - (a.sunPct ?? -1));
     } else {
-      // All / Saved: stable alphabetic order.
-      annotated.sort((a, b) => a.patio.name.localeCompare(b.patio.name));
+      annotated.sort((a, b) => a.venue.name.localeCompare(b.venue.name));
     }
     return annotated;
-  }, [filteredPatios, tab, favourites, sunPctByPatio]);
+  }, [filteredVenues, tab, favourites, sunPctByVenue]);
 
-  // Header tap on a date pill: keep the user's current time-of-day.
   const handleSelectDate = useCallback(
     (d: Date) => {
       const now = new Date();
       const next = dayAnchorUTC(d);
       setDate(next);
-      // Translate the current scrub time-of-day onto the new day.
       const refTime = new Date(currentMs);
       const newCurrent = setSameTimeOfDay(d, isFinite(refTime.getTime()) ? refTime : now);
       setCurrentMs(newCurrent.getTime());
@@ -352,6 +348,12 @@ export default function AppShell() {
   const isToday = useMemo(() => isSameTorontoDay(date, new Date()), [date]);
   const dayLabel = isToday ? 'Today' : dayLabelFmt.format(date);
   const timeLabel = timeFmt.format(new Date(currentMs));
+
+  // Keep the "patios tracked" count accurate — sum across venues.
+  const totalPatios = useMemo(
+    () => venues.reduce((n, v) => n + v.patios.length, 0),
+    [venues],
+  );
 
   return (
     <div className={styles.root}>
@@ -364,7 +366,12 @@ export default function AppShell() {
       >
         <MapboxBuildingsSource />
         <BuildingsFromMap center={REPRESENTATIVE_POINT} onBuildings={handleBuildings} />
-        <PatiosLayer patios={filteredPatios} sunPct={sunPctByPatio} activeId={activeId} />
+        <VenuesLayer
+          venues={filteredVenues}
+          sunPctByPatio={sunPctByPatio}
+          sunPctByVenue={sunPctByVenue}
+          activeVenueId={activeVenueId}
+        />
         {activeSample && (
           <SunLightController
             azimuthDeg={activeSample.azimuthDeg}
@@ -372,7 +379,7 @@ export default function AppShell() {
           />
         )}
         <div className={styles.controlsSlot}>
-          <MapControls onRecenter={flyToOverview} showRecenter={!!activeId} />
+          <MapControls onRecenter={flyToOverview} showRecenter={!!activeVenueId} />
         </div>
         <div className={styles.attributionSlot}>
           <MapAttribution />
@@ -381,7 +388,7 @@ export default function AppShell() {
 
       <div className={styles.headerSlot}>
         <TopHeader
-          patioCount={patios.length}
+          patioCount={totalPatios}
           selectedDate={date}
           onSelectDate={handleSelectDate}
         />
@@ -391,13 +398,13 @@ export default function AppShell() {
         <div className={styles.panelSlot}>
           <RankingPanel
             ranked={rows}
-            totalCount={filteredPatios.length}
-            activeId={activeId}
+            totalCount={filteredVenues.length}
+            activeId={activeVenueId}
             favouriteIds={favourites}
             timeLabel={timeLabel}
             tab={tab}
             setTab={setTab}
-            onSelect={handleSelectPatio}
+            onSelect={handleSelectVenue}
             onToggleFavourite={toggleFavourite}
             onClose={() => setPanelOpen(false)}
             filters={filters}

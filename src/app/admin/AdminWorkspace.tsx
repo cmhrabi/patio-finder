@@ -242,13 +242,22 @@ export default function AdminWorkspace({
   const cursor =
     mode.kind === 'placingVenuePoint' ? 'crosshair' : undefined
 
+  // Use satellite imagery whenever the user is placing a pin, drawing a
+  // polygon, or reviewing one — it shows real buildings, fences, and patios so
+  // they can trace what's actually on the ground. Back to the standard style
+  // once they're idle.
+  const isCreating = mode.kind !== 'idle'
+  const mapStyle = isCreating
+    ? 'mapbox://styles/mapbox/satellite-streets-v12'
+    : 'mapbox://styles/mapbox/standard'
+
   return (
     <div
       className="grid h-full w-full"
       style={{ gridTemplateColumns: '1fr 22rem' }}
     >
       <div className="relative col-start-1 row-start-1 overflow-hidden">
-        <PatioMap initialViewState={TORONTO_VIEW}>
+        <PatioMap initialViewState={TORONTO_VIEW} mapStyle={mapStyle}>
           {/* Existing venues as small circles */}
           <Source id="venues-src" type="geojson" data={venuePoints}>
             <Layer
