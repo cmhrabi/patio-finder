@@ -1,39 +1,181 @@
 .root {
+  /* --w-color is set inline by the component (matches icon hue). */
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 14px;
+  gap: 10px;
+  padding: 6px 14px 6px 6px;
   border-radius: var(--radius-pill);
-  background: rgba(255, 245, 220, 0.04);
-  border: 1px solid var(--map-line);
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--w-color, var(--map-text-mute)) 14%, transparent),
+    rgba(255, 245, 220, 0.04)
+  );
+  border: 1px solid color-mix(in oklab, var(--w-color, var(--map-line)) 30%, var(--map-line));
   color: var(--map-text);
   font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: -0.005em;
-  font-variant-numeric: tabular-nums;
   white-space: nowrap;
   flex: 0 0 auto;
 }
 
 .placeholder {
-  /* Match the populated chip's footprint while loading. */
-  width: 130px;
-  height: 32px;
+  width: 168px;
+  height: 44px;
   background: transparent;
   border-color: transparent;
 }
 
+.badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  background: color-mix(in oklab, var(--w-color) 22%, transparent);
+  border: 1px solid color-mix(in oklab, var(--w-color) 35%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--w-color) 8%, transparent),
+    0 4px 14px -8px color-mix(in oklab, var(--w-color) 80%, transparent);
+}
+
+.icon {
+  display: block;
+}
+
+.stack {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.05;
+  gap: 2px;
+}
+
+.vibe {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--w-color) 75%, var(--map-text));
+}
+
+.dataRow {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
 .temp {
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--map-text);
 }
 
 .dot {
   color: var(--map-text-mute);
+  opacity: 0.7;
 }
 
 .feels {
   color: var(--map-text-mute);
-  font-size: 12px;
-  letter-spacing: 0;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* ---- Per-condition icon animations (gated by prefers-reduced-motion in TS) ---- */
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translateX(-1px);
+  }
+  50% {
+    transform: translateX(1px);
+  }
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1.5px);
+  }
+}
+
+@keyframes drip {
+  0%,
+  100% {
+    transform: translateY(-0.5px);
+  }
+  50% {
+    transform: translateY(1.5px);
+  }
+}
+
+@keyframes flicker {
+  0%,
+  100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  45% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+    filter: drop-shadow(0 0 4px var(--w-color));
+  }
+  55% {
+    opacity: 1;
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.anim_clear .icon {
+  animation: spin-slow 22s linear infinite;
+  transform-origin: 50% 50%;
+}
+
+.anim_partly_cloudy .icon {
+  animation: bob 4.5s ease-in-out infinite;
+}
+
+.anim_cloudy .icon {
+  animation: drift 6s ease-in-out infinite;
+}
+
+.anim_drizzle .icon,
+.anim_rain .icon {
+  animation: drip 1.6s ease-in-out infinite;
+}
+
+.anim_snow .icon {
+  animation: spin-slow 38s linear infinite;
+  transform-origin: 50% 50%;
+}
+
+.anim_storm .icon {
+  animation: flicker 2.4s ease-in-out infinite;
+}
+
+.anim_fog .icon,
+.anim_unknown .icon {
+  animation: breathe 4s ease-in-out infinite;
 }

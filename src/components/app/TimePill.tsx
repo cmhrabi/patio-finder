@@ -8,15 +8,23 @@ type Props = {
   time: string;
   /** Day label, e.g. "Today", "Fri May 1". */
   day: string;
+  /** Click handler — used to snap the scrubber back to the current real time. */
+  onReset?: () => void;
 };
 
-export function TimePill({ time, day }: Props) {
+export function TimePill({ time, day, onReset }: Props) {
   return (
-    <div className={styles.root} role="status" aria-live="polite">
+    <button
+      type="button"
+      className={styles.root}
+      onClick={onReset}
+      aria-label={`Reset time. Currently showing ${time}, ${day}.`}
+      title="Reset to now"
+    >
       <Sun size={14} strokeWidth={2.5} aria-hidden="true" />
       <span className={styles.time}>{time}</span>
       <span className={styles.dot} aria-hidden="true">·</span>
       <span className={styles.day}>{day}</span>
-    </div>
+    </button>
   );
 }

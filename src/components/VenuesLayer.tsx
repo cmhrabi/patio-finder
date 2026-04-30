@@ -1,8 +1,11 @@
 'use client';
 
-import { useMemo } from 'react';
-import { Layer, Source } from 'react-map-gl/mapbox';
+import { useEffect, useMemo } from 'react';
+import { Layer, Source, useMap } from 'react-map-gl/mapbox';
+import type { MapMouseEvent } from 'mapbox-gl';
 import type { Venue } from '@/lib/patios/types';
+
+const VENUE_POINTS_LAYER = 'venue-points-circle';
 
 type Props = {
   venues: Venue[];
@@ -11,6 +14,8 @@ type Props = {
   /** venue-id → 0..100 best sun across that venue's patios. Drives dot colour. */
   sunPctByVenue: Record<string, number | null | undefined>;
   activeVenueId: string | null;
+  /** Fires when a venue dot is clicked on the map. */
+  onSelectVenue?: (id: string) => void;
 };
 
 /**
@@ -22,7 +27,44 @@ type Props = {
  * Two `<Source>`s, four `<Layer>`s — both data-driven via Mapbox style
  * expressions, so re-rendering happens at the GPU level when sun% updates.
  */
-export function VenuesLayer({ venues, sunPctByPatio, sunPctByVenue, activeVenueId }: Props) {
+export function VenuesLayer({
+  venues,
+  sunPctByPatio,
+  sunPctByVenue,
+  activeVenueId,
+  onSelectVenue,
+}: Props) {
+  const { current: mapRef } = useMap();
+
+  // Wire dot clicks → onSelectVenue, plus a pointer cursor on hover so the
+  // dots feel obviously interactive.
+  useEffect(() => {
+    if (!mapRef || !onSelectVenue) return;
+    const map = mapRef.getMap();
+
+    const handleClick = (e: MapMouseEvent) => {
+      const id = e.features?.[0]?.properties?.id;
+      if (typeof id === 'string') onSelectVenue(id);
+    };
+    const handleEnter = () => {
+      map.getCanvas().style.cursor = 'pointer';
+    };
+    const handleLeave = () => {
+      map.getCanvas().style.cursor = '';
+    };
+
+    map.on('click', VENUE_POINTS_LAYER, handleClick);
+    map.on('mouseenter', VENUE_POINTS_LAYER, handleEnter);
+    map.on('mouseleave', VENUE_POINTS_LAYER, handleLeave);
+
+    return () => {
+      map.off('click', VENUE_POINTS_LAYER, handleClick);
+      map.off('mouseenter', VENUE_POINTS_LAYER, handleEnter);
+      map.off('mouseleave', VENUE_POINTS_LAYER, handleLeave);
+      map.getCanvas().style.cursor = '';
+    };
+  }, [mapRef, onSelectVenue]);
+
   const venuesData = useMemo<GeoJSON.FeatureCollection>(
     () => ({
       type: 'FeatureCollection',

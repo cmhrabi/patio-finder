@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { codeToCondition, type WeatherCondition, type WeatherSnapshot } from '@/lib/weather/openMeteo';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import styles from './WeatherChip.module.css';
 
 const ICONS: Record<WeatherCondition, LucideIcon> = {
@@ -39,8 +40,39 @@ const ICON_COLOUR: Record<WeatherCondition, string> = {
   unknown: 'var(--map-text-mute)',
 };
 
+/** Short editorial phrase for the chip — picks personality over precision. */
+function vibe(condition: WeatherCondition, temp: number): string {
+  switch (condition) {
+    case 'storm':
+      return 'wild out there';
+    case 'rain':
+      return 'soggy';
+    case 'drizzle':
+      return 'spitting';
+    case 'snow':
+      return 'snowy';
+    case 'fog':
+      return 'moody';
+    case 'clear':
+      if (temp >= 22) return 'patio weather';
+      if (temp >= 14) return 'sun’s out';
+      if (temp >= 4) return 'crisp & clear';
+      return 'bright but cold';
+    case 'partly-cloudy':
+      if (temp >= 18) return 'patio-friendly';
+      if (temp >= 8) return 'some sun';
+      return 'in & out';
+    case 'cloudy':
+      if (temp >= 14) return 'cosy grey';
+      return 'grey out';
+    default:
+      return '';
+  }
+}
+
 export function WeatherChip() {
   const [snapshot, setSnapshot] = useState<WeatherSnapshot | null>(null);
+  const reducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
     let cancelled = false;
@@ -61,27 +93,38 @@ export function WeatherChip() {
   }, []);
 
   if (!snapshot) {
-    // Reserve space so the header layout doesn't reflow when data arrives.
     return <div className={[styles.root, styles.placeholder].join(' ')} aria-hidden="true" />;
   }
 
   const condition = codeToCondition(snapshot.weatherCode);
   const Icon = ICONS[condition];
   const iconColor = ICON_COLOUR[condition];
+  const phrase = vibe(condition, snapshot.temp);
+  const animate = !reducedMotion;
 
   return (
     <div
-      className={styles.root}
+      className={[styles.root, animate ? styles[`anim_${condition.replace('-', '_')}`] : null]
+        .filter(Boolean)
+        .join(' ')}
       role="status"
       aria-label={`Toronto: ${Math.round(snapshot.temp)}°C, feels like ${Math.round(snapshot.feelsLike)}°C, ${condition.replace('-', ' ')}`}
+      style={{ ['--w-color' as string]: iconColor }}
     >
-      <Icon size={14} strokeWidth={2.25} aria-hidden="true" style={{ color: iconColor }} />
-      <span className={styles.temp}>{Math.round(snapshot.temp)}°</span>
-      <span className={styles.dot} aria-hidden="true">
-        ·
+      <span className={styles.badge} aria-hidden="true">
+        <Icon size={16} strokeWidth={2.25} className={styles.icon} style={{ color: iconColor }} />
       </span>
-      <span className={styles.feels}>
-        feels {Math.round(snapshot.feelsLike)}°
+      <span className={styles.stack}>
+        <span className={styles.vibe}>{phrase || condition.replace('-', ' ')}</span>
+        <span className={styles.dataRow}>
+          <span className={styles.temp}>{Math.round(snapshot.temp)}°</span>
+          <span className={styles.dot} aria-hidden="true">
+            ·
+          </span>
+          <span className={styles.feels}>
+            feels {Math.round(snapshot.feelsLike)}°
+          </span>
+        </span>
       </span>
     </div>
   );

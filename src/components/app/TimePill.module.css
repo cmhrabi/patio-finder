@@ -1,4 +1,7 @@
 .root {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -12,7 +15,21 @@
   letter-spacing: -0.005em;
   box-shadow: 0 12px 32px -12px color-mix(in oklab, var(--accent) 60%, transparent),
     0 1px 0 rgba(20, 30, 50, 0.06);
-  pointer-events: none;
+  pointer-events: auto;
+  transition: background-color 160ms ease-out, transform 120ms ease-out;
+}
+
+.root:hover {
+  background: color-mix(in oklab, var(--accent) 88%, #fff);
+}
+
+.root:active {
+  transform: translateY(1px);
+}
+
+.root:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }
 
 .time {

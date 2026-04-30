@@ -18,6 +18,7 @@ import {
   type RankingTab,
   type RankedVenue,
 } from './app/RankingPanel';
+import { VenueDetailsPanel } from './app/VenueDetailsPanel';
 import { useFavourites } from '@/hooks/useFavourites';
 import { clearLegacyPatioCache, fetchVenues } from '@/lib/patios/storage';
 import type { Venue } from '@/lib/patios/types';
@@ -230,6 +231,31 @@ export default function AppShell() {
     return out;
   }, [venues, sunPctByPatio]);
 
+  const activeVenue = useMemo(
+    () => (activeVenueId ? venues.find((v) => v.id === activeVenueId) ?? null : null),
+    [activeVenueId, venues],
+  );
+
+  // For the details panel sparkline: the active venue's best-overall patio
+  // (the one with the highest *peak* sun across the day) carries the most
+  // signal, so its full-day series is what we plot.
+  const activeVenueSeries = useMemo<SunSample[]>(() => {
+    if (!activeVenue) return [];
+    let best: SunSample[] = [];
+    let bestPeak = -1;
+    for (const p of activeVenue.patios) {
+      const series = seriesByPatio[p.id];
+      if (!series || series.length === 0) continue;
+      let peak = 0;
+      for (const s of series) if (s.sunFraction > peak) peak = s.sunFraction;
+      if (peak > bestPeak) {
+        bestPeak = peak;
+        best = series;
+      }
+    }
+    return best;
+  }, [activeVenue, seriesByPatio]);
+
   // Active venue → use its sunniest patio's current sample to drive the 3D
   // map's lighting. Aligns the world-shadows with the polygon the user picked.
   const activeSample = useMemo<SunSample | null>(() => {
@@ -264,7 +290,7 @@ export default function AppShell() {
     if (!map) return;
     map.flyTo({
       center: [venue.lng, venue.lat],
-      zoom: 17,
+      zoom: 18.5,
       pitch: FOCUSED_PITCH,
       bearing: FOCUSED_BEARING,
       speed: 1.4,
@@ -356,7 +382,7 @@ export default function AppShell() {
   );
 
   return (
-    <div className={styles.root}>
+    <div className={styles.root} data-details-open={activeVenue ? 'true' : undefined}>
       <PatioMap
         ref={mapRef}
         initialViewState={DOWNTOWN_VIEW}
@@ -371,6 +397,7 @@ export default function AppShell() {
           sunPctByPatio={sunPctByPatio}
           sunPctByVenue={sunPctByVenue}
           activeVenueId={activeVenueId}
+          onSelectVenue={handleSelectVenue}
         />
         {activeSample && (
           <SunLightController
@@ -422,8 +449,33 @@ export default function AppShell() {
         </button>
       )}
 
+      {activeVenue ? (
+        <div className={styles.detailsSlot}>
+          <VenueDetailsPanel
+            venue={activeVenue}
+            sunPct={sunPctByVenue[activeVenue.id] ?? null}
+            series={activeVenueSeries}
+            currentMs={currentMs}
+            isFavourite={favourites.has(activeVenue.id)}
+            onToggleFavourite={() => toggleFavourite(activeVenue.id)}
+            onClose={() => {
+              setActiveVenueId(null);
+              flyToOverview();
+            }}
+          />
+        </div>
+      ) : null}
+
       <div className={styles.timePillSlot}>
-        <TimePill time={timeLabel} day={dayLabel} />
+        <TimePill
+          time={timeLabel}
+          day={dayLabel}
+          onReset={() => {
+            const now = new Date();
+            setDate(dayAnchorUTC(now));
+            setCurrentMs(now.getTime());
+          }}
+        />
       </div>
 
       <div className={styles.timelineSlot}>

@@ -80,9 +80,28 @@
   right: var(--space-4);
   z-index: 4;
   pointer-events: none;
+  transition: right 200ms ease-out;
 }
 .controlsSlot > * {
   pointer-events: auto;
+}
+
+/* Shift the zoom/recenter stack inboard when the details panel is open so
+ * they don't get hidden underneath. 380px panel width + a gap. */
+.root[data-details-open='true'] .controlsSlot {
+  right: calc(var(--space-4) + 380px + var(--space-3));
+}
+
+.detailsSlot {
+  position: absolute;
+  /* Match panelSlot: hugged between the date header and the timeline so the
+   * panel always fills the available middle of the right edge and scrolls
+   * internally if the content overflows. */
+  top: calc(var(--space-4) + 76px + var(--space-5));
+  bottom: calc(var(--space-4) + 96px + var(--space-5));
+  right: var(--space-4);
+  z-index: 4;
+  display: flex;
 }
 
 .attributionSlot {

@@ -34,6 +34,13 @@ export type Venue = {
   lng: number;
   lat: number;
   hood?: Neighbourhood;
+  /** Free-form neighbourhood string from the DB — used for the eyebrow when
+   * the canonical filter list doesn't match. */
+  hoodLabel?: string;
+  address?: string;
+  description?: string;
+  /** Per-day open/close slots, keyed by 3-letter day name. */
+  hours?: Record<string, Array<[string, string]>>;
   photo?: string;
   openNow?: boolean;
   hasOutdoorSeating?: boolean;

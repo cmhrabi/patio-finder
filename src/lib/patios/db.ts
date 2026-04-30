@@ -1,11 +1,16 @@
 import 'server-only';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { NEIGHBOURHOODS, type Neighbourhood, type Venue, type VenuePatio } from './types';
+
+const PHOTO_BUCKET = 'venue-photos';
 
 type VenueGeoRow = {
   id: string;
   name: string;
   neighborhood: string | null;
+  address: string | null;
+  description: string | null;
   hours: Record<string, Array<[string, string]>> | null;
   food: boolean;
   lng: number;
@@ -18,6 +23,12 @@ type PatioGeoRow = {
   label: string | null;
   area_geojson: GeoJSON.Polygon | null;
   created_at: string;
+};
+
+type VenuePhotoRow = {
+  venue_id: string;
+  storage_path: string;
+  sort_order: number;
 };
 
 const TZ = 'America/Toronto';
@@ -58,6 +69,11 @@ function isOpenNow(hours: Record<string, Array<[string, string]>> | null): boole
   return slots.some(([start, end]) => timeStr >= start && timeStr < end);
 }
 
+function resolvePhotoUrl(path: string, supabase: SupabaseClient): string {
+  if (/^https?:\/\//i.test(path)) return path;
+  return supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
+}
+
 /**
  * Fetch every venue with its attached patios. Drops venues that have zero
  * usable patios (no polygon ⇒ nothing to rank, nothing to render).
@@ -65,19 +81,34 @@ function isOpenNow(hours: Record<string, Array<[string, string]>> | null): boole
 export async function listVenuesFromDb(): Promise<Venue[]> {
   const supabase = await createSupabaseServerClient();
 
-  const [patiosRes, venuesRes] = await Promise.all([
+  const [patiosRes, venuesRes, photosRes] = await Promise.all([
     supabase
       .from('patios_geo')
       .select('id, venue_id, label, area_geojson, created_at')
       .returns<PatioGeoRow[]>(),
     supabase
       .from('venues_geo')
-      .select('id, name, neighborhood, hours, food, lng, lat')
+      .select('id, name, neighborhood, address, description, hours, food, lng, lat')
       .returns<VenueGeoRow[]>(),
+    supabase
+      .from('venue_photos')
+      .select('venue_id, storage_path, sort_order')
+      .order('sort_order', { ascending: true })
+      .returns<VenuePhotoRow[]>(),
   ]);
 
   if (patiosRes.error) throw new Error(`patios_geo: ${patiosRes.error.message}`);
   if (venuesRes.error) throw new Error(`venues_geo: ${venuesRes.error.message}`);
+  if (photosRes.error) throw new Error(`venue_photos: ${photosRes.error.message}`);
+
+  // First photo per venue (lowest sort_order, then insertion order). `storage_path`
+  // is overloaded: if it parses as an absolute URL we use it as-is; otherwise
+  // it's a key into the `venue-photos` Supabase Storage bucket.
+  const photoByVenue = new Map<string, string>();
+  for (const p of photosRes.data ?? []) {
+    if (photoByVenue.has(p.venue_id)) continue;
+    photoByVenue.set(p.venue_id, resolvePhotoUrl(p.storage_path, supabase));
+  }
 
   // Group patios by venue_id, keeping only those with a valid polygon.
   const patiosByVenue = new Map<string, VenuePatio[]>();
@@ -100,6 +131,11 @@ export async function listVenuesFromDb(): Promise<Venue[]> {
       lng: v.lng,
       lat: v.lat,
       hood: normaliseHood(v.neighborhood),
+      hoodLabel: v.neighborhood ?? undefined,
+      address: v.address ?? undefined,
+      description: v.description ?? undefined,
+      hours: v.hours ?? undefined,
+      photo: photoByVenue.get(v.id),
       openNow: isOpenNow(v.hours),
       hasOutdoorSeating: true,
       patios,
