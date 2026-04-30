@@ -1,9 +1,9 @@
-import PatioMap from "@/components/PatioMap";
+import AppShell from '@/components/AppShell';
 
 export default function Home() {
   return (
     <main className="h-screen w-screen">
-      <PatioMap />
+      <AppShell />
     </main>
   );
 }
