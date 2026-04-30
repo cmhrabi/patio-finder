@@ -82,31 +82,26 @@ export function VenuesLayer({ venues, sunPctByPatio, sunPctByVenue, activeVenueI
               18,
               10,
             ],
+            // Black → bright yellow ramp keyed off the venue's best sun% at
+            // the active scrub time. Intermediate amber stops avoid the muddy
+            // olive that pure linear black→yellow interpolation produces.
             'circle-color': [
               'case',
               ['<', ['get', 'sunPct'], 0],
-              '#586477',
+              '#586477', // sentinel: still computing → neutral cool grey
               [
                 'interpolate',
                 ['linear'],
                 ['get', 'sunPct'],
-                0,
-                '#3a4458',
-                30,
-                '#586477',
-                55,
-                '#c47812',
-                75,
-                '#e89a1f',
-                90,
-                '#ffdf7a',
-                100,
-                '#fff2c2',
+                0, '#0a0a0a',   // near-black — fully shaded
+                40, '#3a2810',  // very dark amber
+                70, '#c47812',  // sun-500
+                100, '#ffeb3b', // bright vivid yellow — fully sunlit
               ],
             ],
-            'circle-stroke-width': 1.5,
-            'circle-stroke-color': 'rgba(255, 245, 220, 0.6)',
-            'circle-opacity': 0.95,
+            'circle-stroke-width': 1,
+            'circle-stroke-color': '#0a0a0a',
+            'circle-opacity': 0.98,
           }}
         />
       </Source>
