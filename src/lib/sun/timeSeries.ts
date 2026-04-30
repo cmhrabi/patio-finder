@@ -62,17 +62,12 @@ export function computeSeries(args: ComputeSeriesArgs): SunSample[] {
     frame.ringToMetres(r as Ring),
   );
 
-  const hMax = buildings.reduce((m, b) => (b.heightM > m ? b.heightM : m), 0);
-  const maxShadowLen = hMax / Math.tan((ALT_MIN_DEG * Math.PI) / 180);
-  const keepDist = maxShadowLen + PATIO_RADIUS_M;
-
-  // Snap projected coordinates to 1 mm. polygon-clipping is sensitive to
-  // floating-point edge cases (coincident segments, near-zero crossings);
-  // rounding here removes a class of "Unable to find segment in SweepLine"
-  // failures without changing the geometry visibly.
+  // Pre-project all buildings within a generous absolute cap (2 km). Buildings
+  // further away than this can't cast meaningful shadows during patio hours.
+  const ABSOLUTE_MAX_M = 200;
   const snap = (v: number) => Math.round(v * 1000) / 1000;
 
-  const projected: ProjectedBuilding[] = [];
+  const projected: (ProjectedBuilding & { distM: number })[] = [];
   for (const b of buildings) {
     if (!b.footprint?.[0] || b.footprint[0].length < 4) continue;
     const fp = b.footprint.map(r =>
@@ -80,10 +75,11 @@ export function computeSeries(args: ComputeSeriesArgs): SunSample[] {
     );
     const c = ringCentroid(fp[0]);
     const dist = Math.hypot(c[0], c[1]);
-    if (dist > keepDist) continue;
-    projected.push({ footprint: fp, heightM: b.heightM });
+    if (dist > ABSOLUTE_MAX_M) continue;
+    projected.push({ footprint: fp, heightM: b.heightM, distM: dist });
   }
 
+  console.log(`[timeSeries] ${patioId} / ${ymdLocal(date)}: ${projected.length} buildings within ${ABSOLUTE_MAX_M} m`)
   const times = getDayTimes(date, lat0, lon0);
   const sunrise = times.sunrise;
   const sunset = times.sunset;
@@ -98,7 +94,14 @@ export function computeSeries(args: ComputeSeriesArgs): SunSample[] {
   for (let t = startMs; t <= endMs; t += stepMs) {
     const sampleDate = new Date(t);
     const { azimuthDeg, altitudeDeg } = getSunPosition(sampleDate, lat0, lon0);
-    const fraction = sunFraction(patioMetric, projected, azimuthDeg, altitudeDeg);
+    // Per-step filter: only buildings whose shadow can actually reach the patio
+    // at this sun altitude. At 30° a 10m building casts a 17m shadow — no need
+    // to polygon-clip buildings 500m away.
+    const altRad = (altitudeDeg * Math.PI) / 180;
+    const relevant = altitudeDeg <= ALT_MIN_DEG
+      ? []
+      : projected.filter(b => b.distM <= b.heightM / Math.tan(altRad) + PATIO_RADIUS_M);
+    const fraction = sunFraction(patioMetric, relevant, azimuthDeg, altitudeDeg);
     samples.push({
       time: sampleDate,
       minutesFromSunrise: (t - startMs) / 60_000,
@@ -107,6 +110,7 @@ export function computeSeries(args: ComputeSeriesArgs): SunSample[] {
       sunFraction: fraction,
     });
   }
+  console.log(`[timeSeries] ${patioId} / ${ymdLocal(date)}: done (${samples.length} samples)`)
   cache.set(key, samples);
   return samples;
 }

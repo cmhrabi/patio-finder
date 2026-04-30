@@ -2,13 +2,13 @@ import { LandingNav } from '@/components/landing/LandingNav';
 import { Hero } from '@/components/landing/Hero';
 import { BrightestSix } from '@/components/landing/BrightestSix';
 import { LandingFooter } from '@/components/landing/LandingFooter';
-import { loadStaticBuildings } from '@/lib/buildings/loadStatic';
-import { computeSunSnapshotAt } from '@/lib/sun/snapshot';
 import { getDayTimes } from '@/lib/sun/sunPosition';
 import { listVenuesFromDb } from '@/lib/patios/db';
 import { NEIGHBOURHOODS, type Venue } from '@/lib/patios/types';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
-// Re-rank every 5 minutes — sun position changes meaningfully on that cadence.
+// Re-rank every 5 minutes — picks up the next 5-min sample bucket from the
+// precomputed series.
 export const revalidate = 300;
 
 const TZ = 'America/Toronto';
@@ -19,6 +19,19 @@ const eyebrowDateFmt = new Intl.DateTimeFormat('en-CA', {
   month: 'long',
   day: 'numeric',
 });
+
+const ymdFmt = new Intl.DateTimeFormat('en-CA', {
+  timeZone: TZ,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+type SeriesRow = {
+  patio_id: string;
+  ts: string;
+  sun_fraction: number;
+};
 
 function formatDaylight(sunrise: Date | null, sunset: Date | null): string {
   if (!sunrise || !sunset) return '—';
@@ -33,32 +46,63 @@ export type RankedVenueRow = { venue: Venue; sunPct: number };
 
 export default async function LandingPage() {
   const now = new Date();
-  const [buildings, venues] = await Promise.all([
-    loadStaticBuildings(),
+  const todayYmd = ymdFmt.format(now);
+  const supabase = await createSupabaseServerClient();
+
+  const [venues, seriesRes] = await Promise.all([
     listVenuesFromDb(),
+    supabase
+      .from('patio_sun_series')
+      .select('patio_id, ts, sun_fraction')
+      .eq('local_date', todayYmd)
+      .returns<SeriesRow[]>(),
   ]);
 
   const dayTimes = getDayTimes(now, TORONTO_CENTRE[1], TORONTO_CENTRE[0]);
   const sunrise = dayTimes.sunrise && !isNaN(dayTimes.sunrise.getTime()) ? dayTimes.sunrise : null;
   const sunset = dayTimes.sunset && !isNaN(dayTimes.sunset.getTime()) ? dayTimes.sunset : null;
 
+  // Rank against "now" inside daylight, solar noon outside it (keeps the page
+  // meaningful pre-sunrise / post-sunset).
   const nowMs = now.getTime();
   const inDaylight = sunrise && sunset && nowMs >= sunrise.getTime() && nowMs <= sunset.getTime();
   const rankingMoment =
     inDaylight || !sunrise || !sunset
       ? now
       : new Date(sunrise.getTime() + (sunset.getTime() - sunrise.getTime()) / 2);
+  const rankingMs = rankingMoment.getTime();
 
-  // Per-venue sun% = best across the venue's patios. Real shadow geometry from
-  // the static City of Toronto 3D Massing dataset; ISR caches the result for 5 min.
+  // Group rows by patio and find the sample whose ts is closest to the ranking
+  // moment. If there's no precomputed data for a patio (cron hasn't run yet,
+  // or new patio) it falls out as 0 — surfaced visibly in the BrightestSix list
+  // so it's obvious the batch needs a kick.
+  const byPatio = new Map<string, SeriesRow[]>();
+  for (const r of seriesRes.data ?? []) {
+    const arr = byPatio.get(r.patio_id);
+    if (arr) arr.push(r);
+    else byPatio.set(r.patio_id, [r]);
+  }
+
+  // Per-venue sun% = best across the venue's patios from precomputed series.
   const ranked: RankedVenueRow[] = venues
     .map((venue) => {
-      let best = 0;
+      let sunPct = 0;
       for (const p of venue.patios) {
-        const { sunFraction } = computeSunSnapshotAt(p.polygon, buildings, rankingMoment);
-        if (sunFraction > best) best = sunFraction;
+        const series = byPatio.get(p.id);
+        if (!series || series.length === 0) continue;
+        let best = series[0];
+        let bestDelta = Math.abs(Date.parse(best.ts) - rankingMs);
+        for (let i = 1; i < series.length; i++) {
+          const delta = Math.abs(Date.parse(series[i].ts) - rankingMs);
+          if (delta < bestDelta) {
+            best = series[i];
+            bestDelta = delta;
+          }
+        }
+        const pct = Math.max(0, Math.min(1, best.sun_fraction)) * 100;
+        if (pct > sunPct) sunPct = pct;
       }
-      return { venue, sunPct: best * 100 };
+      return { venue, sunPct };
     })
     .sort((a, b) => b.sunPct - a.sunPct);
 

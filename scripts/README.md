@@ -1,61 +1,61 @@
 # scripts
 
-## prepare-buildings.mjs
+## buildings-fetch.ts (canonical)
 
-One-shot data prep for `public/buildings.geojson`. Clips the City of Toronto 3D Massing dataset to a circular area around a chosen centre, simplifies, and derives a per-feature `heightM` field for the `fill-extrusion` layer and the sun-fraction polygon math.
-
-### Defaults
-
-Centre: `(-79.4275, 43.6535)` — Ladybug Tavern / College & Dovercourt area.
-Radius: 800 m. Simplify tolerance: ~0.5 m (in degrees at Toronto's latitude).
+Pulls building footprints + heights from OpenStreetMap (via the Overpass API) for the bounding box that covers every patio in the DB plus a ~2 km shadow-reach buffer, and writes the result to `public/buildings.geojson` in the shape `loadStaticBuildings()` expects.
 
 ### Run
 
 ```bash
-node scripts/prepare-buildings.mjs
-# or override
-node scripts/prepare-buildings.mjs --lon -79.43 --lat 43.65 --radius 1000 --out public/buildings.geojson
+npm run buildings:fetch
 ```
 
-### Requirements
+Requires `.env.local` with `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SECRET_KEY` (the script reads patios from Supabase to derive the bbox).
 
-- Node ≥ 18 (`scripts/.cache/` will be created)
-- `ogr2ogr` (GDAL) on `PATH`
-- `unzip` on `PATH`
-- ~100 MB free disk for the cached source data
+### Height resolution
 
-### Pipeline
+Per-feature `heightM` is filled with the cascade — see `src/lib/buildings/osmHeight.ts`:
 
-1. Downloads `3dmassingshapefile_2025_wgs84.zip` from open.toronto.ca into `scripts/.cache/3dmassing.zip` (cached on subsequent runs).
-2. Unzips into `scripts/.cache/3dmassing/`.
-3. Runs `ogr2ogr` with `-clipsrc <bbox>` (computed from `--lon/--lat/--radius`) and `-simplify` to produce a small GeoJSON.
-4. Post-processes in Node: keeps only polygon features, derives `heightM`, drops every other property.
+1. `tags.height` (or `tags['building:height']`), parsed as metres
+2. `tags['building:levels'] × 3 m`
+3. **6 m default** (≈ 2 storeys)
 
-### Height (the EleZ caveat)
+The default kicks in for any building with neither tag — common for low-rise residential. It's deliberately conservative; if you see a tall building treated as 6 m, tag it on OSM and re-run.
 
-The 3D Massing shapefile reports `EleZ` as **orthometric elevation in metres above sea level** for the rooftop, not building height above ground. The script picks one of these strategies depending on the fields present in the shipped vintage:
+### Refresh cadence
 
-1. `AVG_HT_M` — explicit average building height, preferred when present.
-2. `MAX_HT_M` — explicit maximum building height.
-3. `EleZ - ground_z` — when both fields are present.
-4. `EleZ - localGroundEleZ` — fallback. `localGroundEleZ` is the 5th-percentile `EleZ` across all clipped features, used as a coarse ground-level proxy. Adequate on the (flat) Toronto plain at the scale of one neighbourhood; will be wrong near steep slopes.
+Run manually:
 
-In all cases `heightM` is clamped to `[3, 300]` metres.
+- when patios are added in a new neighbourhood (so the bbox covers the new area)
+- roughly quarterly to pick up OSM contributions
+- after any complaint that "this patio's sun coverage looks wrong"
 
-**Always cross-check a few buildings against shademap.app or street-level photos before trusting the shadow output for a new neighbourhood.**
+Commit the regenerated `public/buildings.geojson`.
 
 ### Attribution
 
-> Contains information licensed under the Open Government Licence – Toronto.
+> © OpenStreetMap contributors
 
-This must appear somewhere in the running app (footer, "About" page, etc.) when the dataset is in use.
+Surface this in the app footer when the dataset is in use.
 
-### Re-running for a new neighbourhood
+## sun-rebuild.ts
 
-The script is idempotent on cache hits. Just point it at a new centre:
+Local-dev convenience: hits `/api/cron/sun-batch` with the right `Authorization: Bearer ${CRON_SECRET}` header so you can rebuild `patio_sun_series` without waiting for Vercel cron.
 
 ```bash
-node scripts/prepare-buildings.mjs --lon -79.38 --lat 43.65 --radius 600
+npm run dev          # in another terminal
+npm run sun:rebuild  # ~150 s on the seed data
 ```
 
-Commit the regenerated `public/buildings.geojson` if you want it shipped with the app.
+Override the URL via `SUN_BATCH_URL` if you're hitting a remote env.
+
+## prepare-buildings.mjs (legacy)
+
+The previous pipeline that pulled the City of Toronto 3D Massing shapefile and clipped it to a single neighbourhood. Kept for reference; superseded by `buildings-fetch.ts`, which uses OSM and covers all patios in one pass. Don't run unless you specifically want Massing data.
+
+## generate-tokens.ts / seed.ts
+
+Unrelated to the sun pipeline:
+
+- `npm run tokens:gen` — regenerates `src/tokens/tokens.{css,ts}` from `tokens.json`.
+- `npm run db:seed` — seeds the demo venues / patios / taps into Supabase.

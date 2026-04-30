@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MapRef } from 'react-map-gl/mapbox';
 import PatioMap from './PatioMap';
-import { MapboxBuildingsSource } from './MapboxBuildingsSource';
-import { BuildingsFromMap } from './BuildingsFromMap';
 import { VenuesLayer } from './VenuesLayer';
 import { SunLightController } from './SunLightController';
 import { TopHeader } from './app/TopHeader';
@@ -23,8 +21,8 @@ import { useFavourites } from '@/hooks/useFavourites';
 import { clearLegacyPatioCache, fetchVenues } from '@/lib/patios/storage';
 import type { Venue } from '@/lib/patios/types';
 import { getDayTimes } from '@/lib/sun/sunPosition';
-import { computeSeries } from '@/lib/sun/timeSeries';
-import type { Building, LngLat, SunSample } from '@/lib/sun/types';
+import type { LngLat, SunSample } from '@/lib/sun/types';
+import type { SunSeriesResponse } from '@/app/api/sun-series/route';
 import styles from './AppShell.module.css';
 
 // Centred on Trinity Bellwoods/Ossington — fits the cluster of seed patios.
@@ -114,9 +112,16 @@ function setSameTimeOfDay(day: Date, time: Date): Date {
 
 const REPRESENTATIVE_POINT: LngLat = [DOWNTOWN_VIEW.longitude, DOWNTOWN_VIEW.latitude];
 
+const ymdFmt = new Intl.DateTimeFormat('en-CA', {
+  timeZone: TZ,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
 export default function AppShell() {
   const [venues, setVenues] = useState<Venue[]>([]);
-  const [buildings, setBuildings] = useState<Building[] | null>(null);
+  const [seriesByPatio, setSeriesByPatio] = useState<Record<string, SunSample[]>>({});
   const [activeVenueId, setActiveVenueId] = useState<string | null>(null);
   const [tab, setTab] = useState<RankingTab>('ranking');
   const [filters, setFilters] = useState<Filters>(() => emptyFilters());
@@ -146,7 +151,37 @@ export default function AppShell() {
     };
   }, []);
 
-  const handleBuildings = useCallback((bs: Building[]) => setBuildings(bs), []);
+  // Fetch the precomputed sun-fraction series for the selected date. Server
+  // returns ISO strings for ts; convert to Date once here so downstream memos
+  // can do arithmetic. Missing rows → empty record → UI shows "—".
+  useEffect(() => {
+    const ymd = ymdFmt.format(date);
+    let cancelled = false;
+    void fetch(`/api/sun-series?date=${ymd}`, { cache: 'no-store' })
+      .then((res) => (res.ok ? (res.json() as Promise<SunSeriesResponse>) : null))
+      .then((body) => {
+        if (cancelled || !body) return;
+        const out: Record<string, SunSample[]> = {};
+        for (const [patioId, samples] of Object.entries(body.byPatioId)) {
+          out[patioId] = samples.map((s) => ({
+            time: new Date(s.time),
+            minutesFromSunrise: s.minutesFromSunrise,
+            azimuthDeg: s.azimuthDeg,
+            altitudeDeg: s.altitudeDeg,
+            sunFraction: s.sunFraction,
+          }));
+        }
+        setSeriesByPatio(out);
+      })
+      .catch((e) => {
+        // eslint-disable-next-line no-console
+        console.error('Failed to load sun series:', e);
+        if (!cancelled) setSeriesByPatio({});
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [date]);
 
   const dayTimes = useMemo(
     () => getDayTimes(date, REPRESENTATIVE_POINT[1], REPRESENTATIVE_POINT[0]),
@@ -172,25 +207,7 @@ export default function AppShell() {
     });
   }, [sunrise, sunset]);
 
-  // Compute series for every patio (across all venues) at this date.
-  const seriesByPatio = useMemo(() => {
-    const out: Record<string, SunSample[]> = {};
-    if (!buildings) return out;
-    for (const v of venues) {
-      for (const p of v.patios) {
-        out[p.id] = computeSeries({
-          patioId: p.id,
-          patio: p.polygon,
-          buildings,
-          date,
-        });
-      }
-    }
-    return out;
-  }, [venues, buildings, date]);
-
-  // Per-patio sun% at the active scrub time. Drives the active venue's
-  // patio-polygon colours on the map.
+  // For each patio, find the sample closest to currentMs and convert sunFraction → 0..100.
   const sunPctByPatio = useMemo<Record<string, number | null>>(() => {
     const out: Record<string, number | null> = {};
     for (const v of venues) {
@@ -390,8 +407,6 @@ export default function AppShell() {
         basemapTheme="faded"
         basemapLightPreset={basemapLightPreset}
       >
-        <MapboxBuildingsSource />
-        <BuildingsFromMap center={REPRESENTATIVE_POINT} onBuildings={handleBuildings} />
         <VenuesLayer
           venues={filteredVenues}
           sunPctByPatio={sunPctByPatio}

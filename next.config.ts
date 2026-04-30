@@ -1,13 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // The landing page reads `public/buildings.geojson` server-side via
-  // `loadStaticBuildings()` (process.cwd() + path.join). Vercel's serverless
-  // function tracing doesn't include files under `public/` by default — they're
-  // CDN-served, not bundled. Opt in explicitly so the file is co-located with
-  // the landing page's serverless function.
+  // The OSM building snapshot lives in /public, but Vercel's serverless tracer
+  // doesn't auto-detect dynamic fs reads through path.join. Force-include it
+  // on the cron route so the bundle ships the file alongside the function.
   outputFileTracingIncludes: {
-    "/": ["./public/buildings.geojson"],
+    "/api/cron/sun-batch": ["./public/buildings.geojson"],
   },
 };
 
