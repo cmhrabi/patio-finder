@@ -1,0 +1,69 @@
+.root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--map-bg);
+  color: var(--map-text);
+  overflow: hidden;
+}
+
+.headerSlot {
+  position: absolute;
+  top: var(--space-4);
+  left: var(--space-4);
+  right: var(--space-4);
+  z-index: 5;
+  pointer-events: none;
+}
+
+.headerSlot > * {
+  pointer-events: auto;
+}
+
+.panelSlot {
+  position: absolute;
+  top: calc(var(--space-4) + 64px + var(--space-3));
+  left: var(--space-4);
+  z-index: 4;
+}
+
+.panelOpener {
+  position: absolute;
+  top: calc(var(--space-4) + 64px + var(--space-3));
+  left: var(--space-4);
+  z-index: 4;
+  appearance: none;
+  border: 1px solid var(--map-line);
+  background: color-mix(in oklab, var(--map-panel) 80%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  color: var(--map-text);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 10px 16px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+}
+
+.panelOpener:hover {
+  background: var(--map-panel);
+}
+
+.timePillSlot {
+  position: absolute;
+  bottom: calc(var(--space-4) + 96px + var(--space-3));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.timelineSlot {
+  position: absolute;
+  left: var(--space-4);
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: 5;
+}

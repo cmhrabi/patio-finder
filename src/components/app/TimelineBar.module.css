@@ -1,0 +1,137 @@
+.root {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-4) var(--space-6);
+  background: color-mix(in oklab, var(--map-panel) 75%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--map-line);
+  color: var(--map-text);
+  box-shadow: var(--shadow-card);
+}
+
+.play {
+  appearance: none;
+  border: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: #fffaf0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex: 0 0 auto;
+  box-shadow: 0 8px 24px -8px color-mix(in oklab, var(--accent) 60%, transparent);
+  transition: background-color 160ms ease-out, transform 160ms ease-out;
+}
+
+.play:hover:not(:disabled) {
+  background: var(--accent-2);
+}
+
+.play:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.play:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.play:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.bookend {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.bookendRight {
+  align-items: flex-end;
+}
+
+.bookendLabel {
+  color: var(--map-text-mute);
+}
+
+.bookendValue {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--map-text);
+}
+
+.trackWrap {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.track {
+  position: relative;
+  width: 100%;
+  height: 38px;
+  cursor: pointer;
+  touch-action: none;
+  outline: none;
+}
+
+.track:focus-visible .thumb {
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 30%, transparent), 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.trackDisabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.gradient {
+  position: absolute;
+  inset: 12px 0;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--sun-200) 10%, var(--map-panel-2)) 0%,
+    var(--sun-200) 18%,
+    var(--sun-300) 50%,
+    var(--accent) 88%,
+    color-mix(in oklab, var(--accent) 30%, var(--map-panel-2)) 100%
+  );
+}
+
+.tickLabel {
+  position: absolute;
+  bottom: -16px;
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--map-text-mute);
+  font-feature-settings: 'tnum';
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.thumb {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-pill);
+  background: var(--sun-300);
+  border: 2px solid #fffaf0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 0 4px color-mix(in oklab, var(--sun-300) 30%, transparent);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: box-shadow 160ms ease-out;
+}

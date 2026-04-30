@@ -1,7 +1,7 @@
 'use client';
 
-import type { ReactNode } from 'react';
-import Map from 'react-map-gl/mapbox';
+import { forwardRef, type ReactNode } from 'react';
+import Map, { type MapRef } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 export type PatioMapProps = {
@@ -22,7 +22,10 @@ const DEFAULT_VIEW = {
   zoom: 12,
 };
 
-export default function PatioMap({ initialViewState, mapStyle, children }: PatioMapProps) {
+const PatioMap = forwardRef<MapRef, PatioMapProps>(function PatioMap(
+  { initialViewState, mapStyle, children },
+  ref,
+) {
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
   if (!token) {
@@ -37,6 +40,7 @@ export default function PatioMap({ initialViewState, mapStyle, children }: Patio
 
   return (
     <Map
+      ref={ref}
       mapboxAccessToken={token}
       initialViewState={initialViewState ?? DEFAULT_VIEW}
       mapStyle={mapStyle ?? 'mapbox://styles/mapbox/standard'}
@@ -46,4 +50,6 @@ export default function PatioMap({ initialViewState, mapStyle, children }: Patio
       {children}
     </Map>
   );
-}
+});
+
+export default PatioMap;

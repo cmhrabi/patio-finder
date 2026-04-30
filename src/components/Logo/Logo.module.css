@@ -2,7 +2,10 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: var(--theme-text, var(--ink));
+  /* Inherit colour from the surrounding context — the dark TopHeader panel
+   * sets cream, cream pages inherit ink. SVG strokes/fills use currentColor
+   * so this drives both the mark and the wordmark. */
+  color: inherit;
   line-height: 1;
 }
 
