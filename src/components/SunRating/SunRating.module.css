@@ -1,0 +1,42 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
+.track {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dot {
+  position: relative;
+  display: inline-block;
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--theme-text-mute, var(--ink-mute)) 28%, transparent);
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: var(--sun-300);
+  border-radius: var(--radius-pill);
+  /* Slight inner glow to sell the warm yellow */
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--sun-400) 40%, transparent);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

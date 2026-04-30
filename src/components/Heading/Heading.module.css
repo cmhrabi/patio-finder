@@ -1,0 +1,9 @@
+.heading {
+  margin: 0;
+  color: var(--theme-text, var(--ink));
+  text-wrap: balance;
+}
+
+.muted {
+  color: var(--theme-text-mute, var(--ink-mute));
+}

@@ -1,0 +1,72 @@
+.row {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  color: var(--theme-text, var(--ink));
+  font-family: var(--font-body);
+  font-size: 14px;
+}
+
+.label {
+  user-select: none;
+}
+
+.root {
+  --tg-w: 44px;
+  --tg-h: 26px;
+  --tg-pad: 3px;
+  position: relative;
+  display: inline-flex;
+  width: var(--tg-w);
+  height: var(--tg-h);
+  border-radius: var(--radius-pill);
+  background: var(--ink-mute);
+  border: 1px solid transparent;
+  padding: var(--tg-pad);
+  cursor: pointer;
+  transition: background-color 180ms ease-out;
+  flex: 0 0 auto;
+}
+
+.root:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.size_sm {
+  --tg-w: 36px;
+  --tg-h: 22px;
+  --tg-pad: 2px;
+}
+
+.thumb {
+  display: block;
+  width: calc(var(--tg-h) - var(--tg-pad) * 2 - 2px);
+  height: calc(var(--tg-h) - var(--tg-pad) * 2 - 2px);
+  background: #fffaf0;
+  border-radius: var(--radius-pill);
+  box-shadow: 0 1px 2px rgba(20, 30, 50, 0.2), 0 2px 6px -2px rgba(20, 30, 50, 0.18);
+  transform: translateX(0);
+  transition: transform 180ms ease-out;
+}
+
+.on {
+  background: var(--accent);
+}
+
+.on .thumb {
+  transform: translateX(calc(var(--tg-w) - var(--tg-h)));
+}
+
+.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root,
+  .thumb {
+    transition: none;
+  }
+}

@@ -1,0 +1,16 @@
+import { defineConfig, mergeConfig } from "vitest/config";
+import viteConfig from "./vite.config";
+
+export default mergeConfig(
+  viteConfig,
+  defineConfig({
+    test: {
+      environment: "jsdom",
+      globals: true,
+      setupFiles: ["./tests/setup.ts"],
+      css: { modules: { classNameStrategy: "non-scoped" } },
+      include: ["src/**/*.{test,spec}.{ts,tsx}"],
+      exclude: ["node_modules", ".next", "storybook-static", "sunchaser-design-system"],
+    },
+  }),
+);

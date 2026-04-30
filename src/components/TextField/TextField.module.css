@@ -1,0 +1,106 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--theme-text, var(--ink));
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.field {
+  --field-h: 44px;
+  --field-px: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: var(--field-h);
+  padding: 0 var(--field-px);
+  background: var(--theme-surface, var(--paper));
+  color: var(--theme-text, var(--ink));
+  border: 1px solid var(--theme-line, var(--hairline));
+  border-radius: var(--radius-md);
+  transition: border-color 160ms ease-out, box-shadow 160ms ease-out;
+}
+
+.field:hover {
+  border-color: var(--ink-mute);
+}
+
+.field:focus-within {
+  border-color: var(--ink-2);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 22%, transparent);
+}
+
+.field.invalid {
+  border-color: var(--accent-2);
+}
+.field.invalid:focus-within {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent-2) 22%, transparent);
+}
+
+/* Variants */
+.search {
+  border-radius: var(--radius-pill);
+  --field-px: 18px;
+}
+
+/* Sizes */
+.size_md {
+  --field-h: 44px;
+  font-size: 15px;
+}
+.size_lg {
+  --field-h: 52px;
+  --field-px: 18px;
+  font-size: 17px;
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--theme-text-mute, var(--ink-mute));
+  flex: 0 0 auto;
+}
+
+.input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  font: inherit;
+  color: inherit;
+}
+
+.input::placeholder {
+  color: var(--theme-text-mute, var(--ink-mute));
+}
+
+.hint {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--theme-text-mute, var(--ink-mute));
+}
+
+.error {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--accent-2);
+}

@@ -1,0 +1,22 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+html,
+body,
+#storybook-root {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-body);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+.sb-canvas {
+  min-height: 100vh;
+  padding: 24px;
+}
+.sb-canvas--cream {
+  background: var(--cream);
+}
+.sb-canvas--map {
+  background: var(--map-bg);
+}

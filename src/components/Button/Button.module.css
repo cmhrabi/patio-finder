@@ -1,0 +1,105 @@
+.root {
+  --btn-h: 44px;
+  --btn-px: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: var(--btn-h);
+  padding: 0 var(--btn-px);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: inherit;
+  font-family: var(--font-body);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition: transform 160ms ease-out, background-color 160ms ease-out, color 160ms ease-out, border-color 160ms ease-out, box-shadow 160ms ease-out;
+}
+
+.root:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.root:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.block {
+  width: 100%;
+}
+
+/* Sizes */
+.size_sm {
+  --btn-h: 34px;
+  --btn-px: 14px;
+  font-size: 13px;
+}
+.size_md {
+  --btn-h: 44px;
+  --btn-px: 20px;
+  font-size: 15px;
+}
+.size_lg {
+  --btn-h: 52px;
+  --btn-px: 28px;
+  font-size: 17px;
+}
+
+/* Variants */
+.primary {
+  background: var(--accent);
+  color: #fffaf0;
+  box-shadow: 0 1px 0 rgba(20, 30, 50, 0.06), 0 12px 24px -12px color-mix(in oklab, var(--accent) 70%, transparent);
+}
+.primary:hover:not(:disabled) {
+  background: var(--accent-2);
+  transform: translateY(-1px);
+}
+.primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.ink {
+  background: var(--ink);
+  color: var(--cream);
+}
+.ink:hover:not(:disabled) {
+  background: var(--ink-2);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--theme-text, var(--ink));
+  border-color: var(--theme-line, var(--hairline));
+}
+.ghost:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--theme-text, var(--ink)) 6%, transparent);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .root {
+    transition: none;
+  }
+  .root:hover:not(:disabled) {
+    transform: none;
+  }
+}

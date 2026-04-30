@@ -1,0 +1,50 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-weight: 500;
+  white-space: nowrap;
+  line-height: 1;
+  border: 1px solid transparent;
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+}
+
+.default {
+  background: var(--paper-2);
+  color: var(--ink-soft);
+  border-color: var(--hairline-2);
+}
+
+.accent {
+  background: var(--accent-soft);
+  color: var(--accent-2);
+}
+
+.sun {
+  background: var(--sun-200);
+  color: var(--ink);
+}
+
+.ink {
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.ghost-light {
+  background: rgba(255, 245, 220, 0.10);
+  color: var(--map-text);
+  border-color: var(--map-line);
+  backdrop-filter: blur(8px);
+}

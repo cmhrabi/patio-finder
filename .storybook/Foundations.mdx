@@ -1,0 +1,73 @@
+import { Meta } from "@storybook/blocks";
+import tokens from "../tokens.json";
+
+<Meta title="Foundations/Tokens" />
+
+# SunChaser Foundations
+
+The SunChaser design system has one source of truth: `tokens.json` at the
+repo root. The `pnpm tokens:gen` script reads it and emits `src/tokens/tokens.css`
+(CSS variables) and `src/tokens/tokens.ts` (typed constants). The tables below
+are generated directly from that JSON, so they cannot drift.
+
+## Color
+
+<Swatches data={tokens.color} />
+
+## Spacing
+
+<TokenTable data={tokens.space} prefix="--space-" sample="space" />
+
+## Radius
+
+<TokenTable data={tokens.radius} prefix="--radius-" sample="radius" />
+
+## Type ramp
+
+<TypeRamp data={tokens.type} />
+
+export const Swatches = ({ data }) => (
+  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
+    {Object.entries(data).map(([k, v]) => (
+      <div key={k} style={{ border: "1px solid var(--hairline-2)", borderRadius: 12, overflow: "hidden", background: "var(--paper)" }}>
+        <div style={{ height: 56, background: v }} />
+        <div style={{ padding: "8px 12px", fontFamily: "var(--font-mono)", fontSize: 12 }}>
+          <div style={{ fontWeight: 600 }}>--{k}</div>
+          <div style={{ color: "var(--ink-mute)" }}>{v}</div>
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+export const TokenTable = ({ data, prefix, sample }) => (
+  <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-body)" }}>
+    <thead>
+      <tr><th align="left">Token</th><th align="left">Value</th><th align="left">Sample</th></tr>
+    </thead>
+    <tbody>
+      {Object.entries(data).map(([k, v]) => (
+        <tr key={k} style={{ borderTop: "1px solid var(--hairline-2)" }}>
+          <td style={{ fontFamily: "var(--font-mono)", padding: "8px 0" }}>{prefix}{k}</td>
+          <td style={{ fontFamily: "var(--font-mono)", color: "var(--ink-mute)", padding: "8px 0" }}>{v}</td>
+          <td style={{ padding: "8px 0" }}>
+            {sample === "space" ? <span style={{ display: "inline-block", height: 12, width: v, background: "var(--accent)" }} /> :
+             sample === "radius" ? <span style={{ display: "inline-block", height: 36, width: 36, background: "var(--paper-2)", border: "1px solid var(--hairline)", borderRadius: v }} /> :
+             null}
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+);
+
+export const TypeRamp = ({ data }) => (
+  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    {Object.entries(data).map(([name, t]) => (
+      <div key={name}>
+        <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink-mute)" }}>type-{name}</div>
+        <div className={`type-${name}`}>The quick brown fox jumps over the lazy dog</div>
+      </div>
+    ))}
+  </div>
+);
