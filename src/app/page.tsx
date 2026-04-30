@@ -1,4 +1,3 @@
-import seedPatios from '@/data/seedPatios.json';
 import { LandingNav } from '@/components/landing/LandingNav';
 import { Hero } from '@/components/landing/Hero';
 import { BrightestSix } from '@/components/landing/BrightestSix';
@@ -6,7 +5,8 @@ import { LandingFooter } from '@/components/landing/LandingFooter';
 import { loadStaticBuildings } from '@/lib/buildings/loadStatic';
 import { computeSunSnapshotAt } from '@/lib/sun/snapshot';
 import { getDayTimes } from '@/lib/sun/sunPosition';
-import { NEIGHBOURHOODS, type Patio } from '@/lib/patios/types';
+import { listPatiosFromDb } from '@/lib/patios/db';
+import { NEIGHBOURHOODS } from '@/lib/patios/types';
 
 // Re-rank every 5 minutes — sun position changes meaningfully on that cadence.
 export const revalidate = 300;
@@ -31,8 +31,10 @@ function formatDaylight(sunrise: Date | null, sunset: Date | null): string {
 
 export default async function LandingPage() {
   const now = new Date();
-  const buildings = await loadStaticBuildings();
-  const patios = seedPatios as Patio[];
+  const [buildings, patios] = await Promise.all([
+    loadStaticBuildings(),
+    listPatiosFromDb(),
+  ]);
 
   // Sunrise / sunset / daylight for the eyebrow + stats are derived from the
   // city centre (good enough for one number — coords vary by < 1 second across

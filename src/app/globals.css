@@ -24,3 +24,19 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/*
+ * Hide Mapbox's built-in logo. We replace the default attribution control with
+ * a custom <MapAttribution> pill, so credit is still visible per Mapbox ToS.
+ */
+.mapboxgl-ctrl-logo {
+  display: none !important;
+}
+.mapboxgl-ctrl-bottom-left,
+.mapboxgl-ctrl-bottom-right {
+  pointer-events: none;
+}
+.mapboxgl-ctrl-bottom-left > *,
+.mapboxgl-ctrl-bottom-right > * {
+  pointer-events: auto;
+}

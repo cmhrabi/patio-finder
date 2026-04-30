@@ -1,61 +1,31 @@
 import type { Patio } from './types';
 
-const STORAGE_KEY = 'patio-finder:patios:v1';
-
-function isBrowser(): boolean {
-  return typeof window !== 'undefined' && typeof localStorage !== 'undefined';
+/**
+ * Fetch the canonical patio list from the DB-backed API route.
+ *
+ * No localStorage caching, no merging — Supabase is the single source of truth.
+ * If you need offline cache, layer it on top of this rather than baking it in here.
+ */
+export async function fetchPatios(): Promise<Patio[]> {
+  const res = await fetch('/api/patios', { cache: 'no-store' });
+  if (!res.ok) throw new Error(`fetch /api/patios failed: ${res.status}`);
+  const data = (await res.json()) as Patio[] | { error: string };
+  if (!Array.isArray(data)) throw new Error(data.error ?? 'unknown error');
+  return data;
 }
 
-export function listPatios(): Patio[] {
-  if (!isBrowser()) return [];
+/** Legacy localStorage key from the pre-DB DrawControl flow. */
+const LEGACY_KEY = 'patio-finder:patios:v1';
+
+/**
+ * Wipe the legacy `patio-finder:patios:v1` cache from localStorage. Safe to call
+ * on every mount — no-op once it's gone.
+ */
+export function clearLegacyPatioCache(): void {
+  if (typeof window === 'undefined') return;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as Patio[];
+    window.localStorage.removeItem(LEGACY_KEY);
   } catch {
-    return [];
-  }
-}
-
-function save(patios: Patio[]): void {
-  if (!isBrowser()) return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(patios));
-}
-
-export function addPatio(input: { name: string; polygon: GeoJSON.Polygon }): Patio {
-  const patio: Patio = {
-    id: typeof crypto !== 'undefined' && 'randomUUID' in crypto
-      ? crypto.randomUUID()
-      : `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    name: input.name,
-    polygon: input.polygon,
-    createdAt: new Date().toISOString(),
-  };
-  const next = [...listPatios(), patio];
-  save(next);
-  return patio;
-}
-
-export function removePatio(id: string): void {
-  save(listPatios().filter(p => p.id !== id));
-}
-
-export function renamePatio(id: string, name: string): void {
-  save(listPatios().map(p => (p.id === id ? { ...p, name } : p)));
-}
-
-export async function loadSeedPatios(): Promise<Patio[]> {
-  if (!isBrowser()) return [];
-  try {
-    const res = await fetch('/api/patios');
-    if (!res.ok) return listPatios();
-    const seeds = (await res.json()) as Patio[];
-    const existing = listPatios();
-    const existingIds = new Set(existing.map(p => p.id));
-    const merged = [...existing, ...seeds.filter(s => !existingIds.has(s.id))];
-    if (merged.length !== existing.length) save(merged);
-    return merged;
-  } catch {
-    return listPatios();
+    // ignore — quota/security errors don't matter for a one-shot cleanup
   }
 }

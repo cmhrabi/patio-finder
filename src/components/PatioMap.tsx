@@ -45,6 +45,7 @@ const PatioMap = forwardRef<MapRef, PatioMapProps>(function PatioMap(
       initialViewState={initialViewState ?? DEFAULT_VIEW}
       mapStyle={mapStyle ?? 'mapbox://styles/mapbox/standard'}
       style={{ width: '100%', height: '100%' }}
+      attributionControl={false}
       antialias
     >
       {children}

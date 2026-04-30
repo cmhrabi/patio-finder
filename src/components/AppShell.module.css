@@ -22,14 +22,15 @@
 
 .panelSlot {
   position: absolute;
-  top: calc(var(--space-4) + 64px + var(--space-3));
+  /* var(--space-4) header gap + ~76px header height + var(--space-5) margin */
+  top: calc(var(--space-4) + 76px + var(--space-5));
   left: var(--space-4);
   z-index: 4;
 }
 
 .panelOpener {
   position: absolute;
-  top: calc(var(--space-4) + 64px + var(--space-3));
+  top: calc(var(--space-4) + 76px + var(--space-5));
   left: var(--space-4);
   z-index: 4;
   appearance: none;
@@ -66,4 +67,26 @@
   right: var(--space-4);
   bottom: var(--space-4);
   z-index: 5;
+}
+
+.controlsSlot {
+  position: absolute;
+  top: calc(var(--space-4) + 76px + var(--space-5));
+  right: var(--space-4);
+  z-index: 4;
+  pointer-events: none;
+}
+.controlsSlot > * {
+  pointer-events: auto;
+}
+
+.attributionSlot {
+  position: absolute;
+  right: var(--space-4);
+  bottom: calc(var(--space-4) + 96px + var(--space-3));
+  z-index: 4;
+  pointer-events: none;
+}
+.attributionSlot > * {
+  pointer-events: auto;
 }

@@ -2,7 +2,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-5);
-  padding: var(--space-3) var(--space-4) var(--space-3) var(--space-5);
+  padding: var(--space-4) var(--space-6);
   background: color-mix(in oklab, var(--map-panel) 75%, transparent);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);

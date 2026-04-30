@@ -10,6 +10,7 @@ import { SunLightController } from './SunLightController';
 import { TopHeader } from './app/TopHeader';
 import { TimePill } from './app/TimePill';
 import { TimelineBar } from './app/TimelineBar';
+import { MapAttribution, MapControls } from './app/MapControls';
 import {
   RankingPanel,
   emptyFilters,
@@ -18,7 +19,7 @@ import {
   type RankedPatio,
 } from './app/RankingPanel';
 import { useFavourites } from '@/hooks/useFavourites';
-import { listPatios, loadSeedPatios } from '@/lib/patios/storage';
+import { clearLegacyPatioCache, fetchPatios } from '@/lib/patios/storage';
 import type { Patio } from '@/lib/patios/types';
 import { getDayTimes } from '@/lib/sun/sunPosition';
 import { computeSeries } from '@/lib/sun/timeSeries';
@@ -128,12 +129,24 @@ export default function AppShell() {
   const { favourites, toggle: toggleFavourite } = useFavourites();
   const mapRef = useRef<MapRef | null>(null);
 
-  // Hydrate patios.
+  // Hydrate patios from the DB. Also wipe the legacy localStorage cache from
+  // the pre-DB DrawControl flow — it would otherwise inject stale stub patios
+  // back into the merge on every reload.
   useEffect(() => {
-    setPatios(listPatios());
-    void loadSeedPatios().then((merged) => {
-      setPatios(merged);
-    });
+    clearLegacyPatioCache();
+    let cancelled = false;
+    void fetchPatios()
+      .then((next) => {
+        if (!cancelled) setPatios(next);
+      })
+      .catch((e) => {
+        // Surface to the console so it shows in dev; don't crash the UI.
+        // eslint-disable-next-line no-console
+        console.error('Failed to load patios:', e);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleBuildings = useCallback((bs: Building[]) => setBuildings(bs), []);
@@ -345,6 +358,12 @@ export default function AppShell() {
             altitudeDeg={activeSample.altitudeDeg}
           />
         )}
+        <div className={styles.controlsSlot}>
+          <MapControls onRecenter={flyToOverview} showRecenter={!!activeId} />
+        </div>
+        <div className={styles.attributionSlot}>
+          <MapAttribution />
+        </div>
       </PatioMap>
 
       <div className={styles.headerSlot}>

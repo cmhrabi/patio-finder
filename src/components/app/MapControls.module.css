@@ -1,0 +1,75 @@
+.stack {
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in oklab, var(--map-panel) 78%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--map-line);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-card);
+  padding: 4px;
+  pointer-events: auto;
+}
+
+.btn {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--map-text);
+  cursor: pointer;
+  border-radius: var(--radius-pill);
+  transition: background-color 160ms ease-out, color 160ms ease-out, transform 120ms ease-out;
+}
+
+.btn:hover {
+  background: rgba(255, 245, 220, 0.07);
+}
+
+.btn:active {
+  transform: scale(0.94);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.divider {
+  height: 1px;
+  margin: 2px 6px;
+  background: var(--map-line);
+}
+
+.attribution {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--map-panel) 70%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--map-line);
+  color: var(--map-text-mute);
+  font-family: var(--font-body);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  pointer-events: auto;
+}
+
+.attribution a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dashed transparent;
+  transition: color 160ms ease-out, border-color 160ms ease-out;
+}
+
+.attribution a:hover {
+  color: var(--map-text);
+  border-bottom-color: var(--map-text-mute);
+}

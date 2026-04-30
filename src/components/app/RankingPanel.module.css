@@ -17,7 +17,7 @@
   display: flex;
   align-items: stretch;
   gap: 0;
-  padding: 6px 6px 0;
+  padding: 6px var(--space-3) 0;
   border-bottom: 1px solid var(--map-line);
 }
 
@@ -82,7 +82,7 @@
 }
 
 .body {
-  padding: var(--space-4) var(--space-4) var(--space-5);
+  padding: var(--space-5) var(--space-5) var(--space-6);
   overflow-y: auto;
   flex: 1 1 auto;
   min-height: 0;
@@ -181,6 +181,10 @@
   align-items: center;
   gap: 12px;
   width: 100%;
+  /* Without min-width:0 the button's intrinsic min-content width (driven by the
+   * un-breakable patio name) defeats the grid 1fr column and pushes the Star
+   * off the panel. This lets the .name ellipsis actually take effect. */
+  min-width: 0;
   cursor: pointer;
   text-align: left;
   color: inherit;
@@ -239,6 +243,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
   font-family: var(--font-body);
   font-size: 12px;
   color: var(--map-text-mute);
@@ -246,6 +251,9 @@
 
 .hood {
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .pct {
