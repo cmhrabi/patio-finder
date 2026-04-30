@@ -1,0 +1,16 @@
+.dot {
+  display: inline-block;
+  cursor: pointer;
+  /* Tiny lift so the dot pops above the basemap shading. */
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+  transition: transform 160ms ease-out, filter 160ms ease-out;
+}
+
+.dot:hover {
+  transform: scale(1.15);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
+}
+
+.svg {
+  display: block;
+}
