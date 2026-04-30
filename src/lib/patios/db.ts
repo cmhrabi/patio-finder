@@ -75,6 +75,25 @@ function resolvePhotoUrl(path: string, supabase: SupabaseClient): string {
 }
 
 /**
+ * Bare list of patios with their polygons — the shape the sun-batch cron needs
+ * to recompute coverage. Skips rows with missing or non-Polygon geometry.
+ */
+export async function listPatiosFromDb(): Promise<Array<{ id: string; polygon: GeoJSON.Polygon }>> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('patios_geo')
+    .select('id, area_geojson')
+    .returns<Array<{ id: string; area_geojson: GeoJSON.Polygon | null }>>();
+  if (error) throw new Error(`patios_geo: ${error.message}`);
+  const out: Array<{ id: string; polygon: GeoJSON.Polygon }> = [];
+  for (const row of data ?? []) {
+    if (!row.area_geojson || row.area_geojson.type !== 'Polygon') continue;
+    out.push({ id: row.id, polygon: row.area_geojson });
+  }
+  return out;
+}
+
+/**
  * Fetch every venue with its attached patios. Drops venues that have zero
  * usable patios (no polygon ⇒ nothing to rank, nothing to render).
  */
