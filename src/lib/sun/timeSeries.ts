@@ -94,14 +94,26 @@ export function computeSeries(args: ComputeSeriesArgs): SunSample[] {
   for (let t = startMs; t <= endMs; t += stepMs) {
     const sampleDate = new Date(t);
     const { azimuthDeg, altitudeDeg } = getSunPosition(sampleDate, lat0, lon0);
-    // Per-step filter: only buildings whose shadow can actually reach the patio
-    // at this sun altitude. At 30° a 10m building casts a 17m shadow — no need
-    // to polygon-clip buildings 500m away.
-    const altRad = (altitudeDeg * Math.PI) / 180;
-    const relevant = altitudeDeg <= ALT_MIN_DEG
-      ? []
-      : projected.filter(b => b.distM <= b.heightM / Math.tan(altRad) + PATIO_RADIUS_M);
-    const fraction = sunFraction(patioMetric, relevant, azimuthDeg, altitudeDeg);
+
+    let fraction: number;
+    if (altitudeDeg <= ALT_MIN_DEG) {
+      // Sun too low for shadow math to be reliable — treat as fully shaded.
+      // The previous implementation passed an empty building list down to
+      // sunFraction(), which interprets "no shadows" as "fully sunny" and
+      // produced a spurious spike at sunrise on every chart. Anything above
+      // a single storey blocks grazing sun, so 0 is far closer to truth than 1.
+      fraction = 0;
+    } else {
+      // Per-step filter: only buildings whose shadow can actually reach the
+      // patio at this sun altitude. At 30° a 10m building casts a 17m shadow
+      // — no need to polygon-clip buildings 500m away.
+      const altRad = (altitudeDeg * Math.PI) / 180;
+      const relevant = projected.filter(
+        b => b.distM <= b.heightM / Math.tan(altRad) + PATIO_RADIUS_M,
+      );
+      fraction = sunFraction(patioMetric, relevant, azimuthDeg, altitudeDeg);
+    }
+
     samples.push({
       time: sampleDate,
       minutesFromSunrise: (t - startMs) / 60_000,
