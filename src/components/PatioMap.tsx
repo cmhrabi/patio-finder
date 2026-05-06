@@ -66,6 +66,74 @@ const PatioMap = forwardRef<MapRef, PatioMapProps>(function PatioMap(
     }
   }, [loaded, basemapTheme, basemapLightPreset]);
 
+  // Kill basemap building cast-shadows. They don't reflect our patio-level
+  // shadow predictions and the two visualizations were confusing side-by-side.
+  // Keep ambient + directional so 3D buildings still have sided shading.
+  //
+  // Standard re-applies its preset lights whenever lightPreset/theme change, so
+  // we listen to style + styledata events and re-stomp the lights on each.
+  useEffect(() => {
+    if (!loaded) return;
+    const map = internalRef.current?.getMap();
+    if (!map) return;
+
+    const lights = [
+      {
+        id: 'directional',
+        type: 'directional',
+        properties: {
+          'cast-shadows': false,
+          'shadow-intensity': 0,
+          intensity: 0.5,
+        },
+      },
+      {
+        id: 'ambient',
+        type: 'ambient',
+        properties: { intensity: 0.8 },
+      },
+    ];
+
+    const apply = () => {
+      try {
+        (map as unknown as { setLights: (l: unknown) => void }).setLights(lights);
+      } catch {
+        // style not ready or API unavailable — ignore.
+      }
+      // Belt-and-braces: walk every layer and disable per-layer cast-shadows.
+      // Standard's building/fill-extrusion/model layers each have their own
+      // *-cast-shadows layout flags that override the global directional light.
+      try {
+        const style = map.getStyle();
+        for (const layer of style?.layers ?? []) {
+          const setLayout = (prop: string) => {
+            try {
+              (map as unknown as {
+                setLayoutProperty: (id: string, p: string, v: unknown) => void;
+              }).setLayoutProperty(layer.id, prop, false);
+            } catch {
+              // layer doesn't support this property — skip.
+            }
+          };
+          if (layer.type === 'fill-extrusion') setLayout('fill-extrusion-cast-shadows');
+          if (layer.type === 'model') setLayout('model-cast-shadows');
+          // Standard uses an internal `building` layer type in newer styles.
+          if ((layer as { type: string }).type === 'building') setLayout('building-cast-shadows');
+        }
+      } catch {
+        // style not introspectable — ignore.
+      }
+    };
+
+    if (map.isStyleLoaded()) apply();
+    map.on('style.load', apply);
+    map.on('styledata', apply);
+    return () => {
+      map.off('style.load', apply);
+      map.off('styledata', apply);
+    };
+  }, [loaded, basemapTheme, basemapLightPreset]);
+
   if (!token) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-neutral-100 p-8 text-center text-sm text-neutral-700">
