@@ -21,6 +21,9 @@ export type SunSample = {
   azimuthDeg: number;
   altitudeDeg: number;
   sunFraction: number;
+  // The portion of the patio polygon that lies in shadow at this moment, in lng/lat.
+  // null when the patio is fully sunlit. Equal to the patio polygon when fully shaded.
+  shadowGeoJson: GeoJSON.MultiPolygon | null;
 };
 
 export type Building = {

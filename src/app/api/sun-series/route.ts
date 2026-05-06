@@ -11,6 +11,7 @@ type SeriesRow = {
   azimuth_deg: number
   altitude_deg: number
   sun_fraction: number
+  shadow_geojson: GeoJSON.MultiPolygon | null
 }
 
 /** Wire type for a single sample. Time is an ISO string; client should re-parse. */
@@ -20,6 +21,7 @@ export type WireSunSample = {
   azimuthDeg: number
   altitudeDeg: number
   sunFraction: number
+  shadowGeoJson: GeoJSON.MultiPolygon | null
 }
 
 export type SunSeriesResponse = {
@@ -47,7 +49,7 @@ export async function GET(req: NextRequest) {
   const supabase = await createSupabaseServerClient()
   const { data, error } = await supabase
     .from('patio_sun_series')
-    .select('patio_id, ts, minutes_from_sunrise, azimuth_deg, altitude_deg, sun_fraction')
+    .select('patio_id, ts, minutes_from_sunrise, azimuth_deg, altitude_deg, sun_fraction, shadow_geojson')
     .eq('local_date', date)
     .order('ts', { ascending: true })
     .returns<SeriesRow[]>()
@@ -64,6 +66,7 @@ export async function GET(req: NextRequest) {
       azimuthDeg: r.azimuth_deg,
       altitudeDeg: r.altitude_deg,
       sunFraction: r.sun_fraction,
+      shadowGeoJson: r.shadow_geojson,
     }
     ;(byPatioId[r.patio_id] ??= []).push(sample)
   }

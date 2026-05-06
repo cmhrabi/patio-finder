@@ -2,14 +2,16 @@ import type {
   Building,
   Frame,
   LngLat,
+  MetricMultiPolygon,
   MetricPolygon,
+  MetricRing,
   ProjectedBuilding,
   Ring,
   SunSample,
 } from './types';
 import { makeFrame } from './projection';
 import { getDayTimes, getSunPosition } from './sunPosition';
-import { sunFraction } from './coverage';
+import { computeCoverage } from './coverage';
 
 const STEP_MINUTES = 5;
 const ALT_MIN_DEG = 3;
@@ -24,6 +26,17 @@ function ymdLocal(d: Date, tz = 'America/Toronto'): string {
     month: '2-digit',
     day: '2-digit',
   }).format(d);
+}
+
+function metricMpToGeoJson(
+  mp: MetricMultiPolygon | null,
+  frame: Frame,
+): GeoJSON.MultiPolygon | null {
+  if (!mp || mp.length === 0) return null;
+  const coordinates: number[][][][] = mp.map((poly) =>
+    poly.map((ring) => frame.ringToLngLat(ring as MetricRing) as number[][]),
+  );
+  return { type: 'MultiPolygon', coordinates };
 }
 
 function ringCentroid(ring: number[][]): [number, number] {
@@ -96,6 +109,7 @@ export function computeSeries(args: ComputeSeriesArgs): SunSample[] {
     const { azimuthDeg, altitudeDeg } = getSunPosition(sampleDate, lat0, lon0);
 
     let fraction: number;
+    let shadowMetric: MetricMultiPolygon | null;
     if (altitudeDeg <= ALT_MIN_DEG) {
       // Sun too low for shadow math to be reliable — treat as fully shaded.
       // The previous implementation passed an empty building list down to
@@ -103,6 +117,7 @@ export function computeSeries(args: ComputeSeriesArgs): SunSample[] {
       // produced a spurious spike at sunrise on every chart. Anything above
       // a single storey blocks grazing sun, so 0 is far closer to truth than 1.
       fraction = 0;
+      shadowMetric = [patioMetric];
     } else {
       // Per-step filter: only buildings whose shadow can actually reach the
       // patio at this sun altitude. At 30° a 10m building casts a 17m shadow
@@ -111,7 +126,9 @@ export function computeSeries(args: ComputeSeriesArgs): SunSample[] {
       const relevant = projected.filter(
         b => b.distM <= b.heightM / Math.tan(altRad) + PATIO_RADIUS_M,
       );
-      fraction = sunFraction(patioMetric, relevant, azimuthDeg, altitudeDeg);
+      const cov = computeCoverage(patioMetric, relevant, azimuthDeg, altitudeDeg);
+      fraction = cov.sunFraction;
+      shadowMetric = cov.shadowOnPatio;
     }
 
     samples.push({
@@ -120,6 +137,7 @@ export function computeSeries(args: ComputeSeriesArgs): SunSample[] {
       azimuthDeg,
       altitudeDeg,
       sunFraction: fraction,
+      shadowGeoJson: metricMpToGeoJson(shadowMetric, frame),
     });
   }
   console.log(`[timeSeries] ${patioId} / ${ymdLocal(date)}: done (${samples.length} samples)`)

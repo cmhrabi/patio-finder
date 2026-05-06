@@ -7,8 +7,13 @@ import type { Venue } from '@/lib/patios/types';
 
 type Props = {
   venues: Venue[];
-  /** patio-id → 0..100 sun fraction. Drives polygon colour for the active venue. */
+  /** patio-id → 0..100 sun fraction. Kept around for future legend/tooltip use. */
   sunPctByPatio: Record<string, number | null | undefined>;
+  /**
+   * patio-id → GeoJSON MultiPolygon describing the part of the patio that lies
+   * in shadow at the active timestep. `null` when the patio is fully sunlit.
+   */
+  shadowByPatio: Record<string, GeoJSON.MultiPolygon | null | undefined>;
   /** venue-id → 0..100 best sun across that venue's patios. Drives dot fill. */
   sunPctByVenue: Record<string, number | null | undefined>;
   activeVenueId: string | null;
@@ -16,16 +21,20 @@ type Props = {
   onSelectVenue?: (id: string) => void;
 };
 
+const SUNLIT_FILL = '#fff2c2';
+const SHADOW_FILL = '#3a4458';
+
 /**
  * Two halves:
  *  - One marker per venue (`VenueDots`), rendered as a split SVG circle —
  *    sun% drives how much of the disc is yellow vs shaded. The active venue
  *    is suppressed so its patio polygons take its place.
- *  - A fill + line layer with the active venue's patio polygons.
+ *  - The active venue's patios: a flat sunlit fill underneath, the precomputed
+ *    shadow∩patio polygon on top, and the orange outline above both.
  */
 export function VenuesLayer({
   venues,
-  sunPctByPatio,
+  shadowByPatio,
   sunPctByVenue,
   activeVenueId,
   onSelectVenue,
@@ -38,17 +47,29 @@ export function VenuesLayer({
         features.push({
           type: 'Feature',
           geometry: p.polygon,
-          properties: {
-            id: p.id,
-            venue_id: v.id,
-            label: p.label,
-            sunPct: typeof sunPctByPatio[p.id] === 'number' ? sunPctByPatio[p.id] : -1,
-          },
+          properties: { id: p.id, venue_id: v.id, label: p.label },
         });
       }
     }
     return { type: 'FeatureCollection', features };
-  }, [venues, sunPctByPatio, activeVenueId]);
+  }, [venues, activeVenueId]);
+
+  const shadowsData = useMemo<GeoJSON.FeatureCollection>(() => {
+    const features: GeoJSON.Feature[] = [];
+    for (const v of venues) {
+      if (v.id !== activeVenueId) continue;
+      for (const p of v.patios) {
+        const shadow = shadowByPatio[p.id];
+        if (!shadow) continue;
+        features.push({
+          type: 'Feature',
+          geometry: shadow,
+          properties: { id: p.id, venue_id: v.id },
+        });
+      }
+    }
+    return { type: 'FeatureCollection', features };
+  }, [venues, shadowByPatio, activeVenueId]);
 
   return (
     <>
@@ -65,29 +86,8 @@ export function VenuesLayer({
           type="fill"
           slot="top"
           paint={{
-            'fill-color': [
-              'case',
-              ['<', ['get', 'sunPct'], 0],
-              '#586477',
-              [
-                'interpolate',
-                ['linear'],
-                ['get', 'sunPct'],
-                0,
-                '#3a4458',
-                30,
-                '#586477',
-                55,
-                '#c47812',
-                75,
-                '#e89a1f',
-                90,
-                '#ffdf7a',
-                100,
-                '#fff2c2',
-              ],
-            ],
-            'fill-opacity': 0.95,
+            'fill-color': SUNLIT_FILL,
+            'fill-opacity': 0.85,
           }}
         />
         <Layer
@@ -97,6 +97,18 @@ export function VenuesLayer({
           paint={{
             'line-color': '#e8643a',
             'line-width': 2.4,
+          }}
+        />
+      </Source>
+
+      <Source id="active-venue-patio-shadows" type="geojson" data={shadowsData}>
+        <Layer
+          id="active-venue-patio-shadows-fill"
+          type="fill"
+          slot="top"
+          paint={{
+            'fill-color': SHADOW_FILL,
+            'fill-opacity': 0.85,
           }}
         />
       </Source>

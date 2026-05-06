@@ -49,25 +49,32 @@ function safeUnion(shadows: PCMultiPolygon[]): PCMultiPolygon {
   return merged;
 }
 
-export function sunFraction(
+export type SunCoverage = {
+  sunFraction: number;
+  // Intersection of the unioned building shadows with the patio, in the metric
+  // frame. null when the patio is fully sunlit (or the sun is below the horizon).
+  shadowOnPatio: MetricMultiPolygon | null;
+};
+
+export function computeCoverage(
   patio: MetricPolygon,
   buildings: ProjectedBuilding[],
   azimuthDeg: number,
   altitudeDeg: number,
-): number {
+): SunCoverage {
   const patioArea = polygonArea(patio);
-  if (patioArea <= 0) return 1;
-  if (altitudeDeg <= 0) return 0;
+  if (patioArea <= 0) return { sunFraction: 1, shadowOnPatio: null };
+  if (altitudeDeg <= 0) return { sunFraction: 0, shadowOnPatio: [patio] };
 
   const shadows: PCMultiPolygon[] = [];
   for (const b of buildings) {
     const sh = buildShadow(b.footprint, b.heightM, azimuthDeg, altitudeDeg);
     if (sh.length > 0) shadows.push(sh as unknown as PCMultiPolygon);
   }
-  if (shadows.length === 0) return 1;
+  if (shadows.length === 0) return { sunFraction: 1, shadowOnPatio: null };
 
   const merged = safeUnion(shadows);
-  if (!merged || merged.length === 0) return 1;
+  if (!merged || merged.length === 0) return { sunFraction: 1, shadowOnPatio: null };
 
   let overlap: PCMultiPolygon = [];
   try {
@@ -76,10 +83,23 @@ export function sunFraction(
       merged,
     );
   } catch {
-    return 1;
+    return { sunFraction: 1, shadowOnPatio: null };
   }
-  if (!overlap || overlap.length === 0) return 1;
+  if (!overlap || overlap.length === 0) return { sunFraction: 1, shadowOnPatio: null };
 
-  const overlapArea = multiPolygonArea(overlap as unknown as MetricMultiPolygon);
-  return Math.max(0, Math.min(1, 1 - overlapArea / patioArea));
+  const overlapMp = overlap as unknown as MetricMultiPolygon;
+  const overlapArea = multiPolygonArea(overlapMp);
+  const fraction = Math.max(0, Math.min(1, 1 - overlapArea / patioArea));
+  return { sunFraction: fraction, shadowOnPatio: overlapMp };
+}
+
+/** @deprecated Use computeCoverage. Kept for tests and downstream callers that
+ * only need the scalar. */
+export function sunFraction(
+  patio: MetricPolygon,
+  buildings: ProjectedBuilding[],
+  azimuthDeg: number,
+  altitudeDeg: number,
+): number {
+  return computeCoverage(patio, buildings, azimuthDeg, altitudeDeg).sunFraction;
 }

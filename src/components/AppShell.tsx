@@ -168,6 +168,7 @@ export default function AppShell() {
             azimuthDeg: s.azimuthDeg,
             altitudeDeg: s.altitudeDeg,
             sunFraction: s.sunFraction,
+            shadowGeoJson: s.shadowGeoJson ?? null,
           }));
         }
         setSeriesByPatio(out);
@@ -198,9 +199,10 @@ export default function AppShell() {
     });
   }, [sunrise, sunset]);
 
-  // For each patio, find the sample closest to currentMs and convert sunFraction → 0..100.
-  const sunPctByPatio = useMemo<Record<string, number | null>>(() => {
-    const out: Record<string, number | null> = {};
+  // For each patio, find the sample closest to currentMs. Reused by both the
+  // sun% and shadow-polygon lookups below.
+  const closestSampleByPatio = useMemo<Record<string, SunSample | null>>(() => {
+    const out: Record<string, SunSample | null> = {};
     for (const v of venues) {
       for (const p of v.patios) {
         const series = seriesByPatio[p.id];
@@ -217,11 +219,29 @@ export default function AppShell() {
             bestDelta = delta;
           }
         }
-        out[p.id] = best.sunFraction * 100;
+        out[p.id] = best;
       }
     }
     return out;
   }, [venues, seriesByPatio, currentMs]);
+
+  const sunPctByPatio = useMemo<Record<string, number | null>>(() => {
+    const out: Record<string, number | null> = {};
+    for (const id of Object.keys(closestSampleByPatio)) {
+      const s = closestSampleByPatio[id];
+      out[id] = s ? s.sunFraction * 100 : null;
+    }
+    return out;
+  }, [closestSampleByPatio]);
+
+  const shadowByPatio = useMemo<Record<string, GeoJSON.MultiPolygon | null>>(() => {
+    const out: Record<string, GeoJSON.MultiPolygon | null> = {};
+    for (const id of Object.keys(closestSampleByPatio)) {
+      const s = closestSampleByPatio[id];
+      out[id] = s?.shadowGeoJson ?? null;
+    }
+    return out;
+  }, [closestSampleByPatio]);
 
   // Per-venue sun% — the sunniest of the venue's patios. Drives the dot colour
   // on the map and the ranking percentage in the list.
@@ -373,6 +393,7 @@ export default function AppShell() {
         <VenuesLayer
           venues={filteredVenues}
           sunPctByPatio={sunPctByPatio}
+          shadowByPatio={shadowByPatio}
           sunPctByVenue={sunPctByVenue}
           activeVenueId={activeVenueId}
           onSelectVenue={handleSelectVenue}

@@ -1,7 +1,7 @@
 import type { Building, LngLat, MetricPolygon, ProjectedBuilding, Ring } from './types';
 import { makeFrame } from './projection';
 import { getSunPosition } from './sunPosition';
-import { sunFraction } from './coverage';
+import { computeCoverage } from './coverage';
 
 /** Hard floor when the sun is so low the shadow filter would keep everything. */
 const ALT_MIN_DEG = 8;
@@ -102,6 +102,11 @@ export function computeSunSnapshotAt(
     projected.push({ footprint: fp, heightM: b.heightM });
   }
 
-  const fraction = sunFraction(patioMetric, projected, azimuthDeg, altitudeDeg);
+  const { sunFraction: fraction } = computeCoverage(
+    patioMetric,
+    projected,
+    azimuthDeg,
+    altitudeDeg,
+  );
   return { sunFraction: fraction, azimuthDeg, altitudeDeg };
 }

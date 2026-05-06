@@ -1,4 +1,4 @@
-const FALLBACK_HEIGHT_M = 6;
+export const FALLBACK_HEIGHT_M = 10;
 const METRES_PER_LEVEL = 3;
 
 function parseMetres(raw: string | undefined): number | null {
@@ -13,7 +13,7 @@ function parseMetres(raw: string | undefined): number | null {
  * Resolve a building height in metres from OSM tags using the cascade:
  *   1. `height` (or `building:height`) — already in metres in OSM
  *   2. `building:levels` × 3 m
- *   3. 6 m default (≈ 2 storeys)
+ *   3. 10 m default (≈ 3 storeys)
  */
 export function resolveHeightM(tags: Record<string, string | undefined>): number {
   const direct = parseMetres(tags.height) ?? parseMetres(tags['building:height']);

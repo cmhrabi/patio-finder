@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
-import { listPatiosFromDb } from '@/lib/patios/db'
+import { listVenuesFromDb } from '@/lib/patios/db'
 import { loadStaticBuildings } from '@/lib/buildings/loadStatic'
 import { computeSeries } from '@/lib/sun/timeSeries'
 
@@ -10,7 +10,7 @@ export const maxDuration = 300
 
 const TZ = 'America/Toronto'
 const LOOKAHEAD_DAYS = 7
-const UPSERT_CHUNK = 1000
+const INSERT_CHUNK = 1000
 
 const dateFmt = new Intl.DateTimeFormat('en-CA', {
   timeZone: TZ,
@@ -63,6 +63,7 @@ type Row = {
   azimuth_deg: number
   altitude_deg: number
   sun_fraction: number
+  shadow_geojson: GeoJSON.MultiPolygon | null
 }
 
 export async function GET(req: NextRequest) {
@@ -73,12 +74,30 @@ export async function GET(req: NextRequest) {
   const startedAt = Date.now()
   const supabase = createSupabaseAdminClient()
 
+  // Wipe the table before recomputing. The lookahead window is rolling, the
+  // table is render-only, and storing GeoJSON polygons per timestep makes row
+  // size 10–100× larger than before — a clean slate each run keeps storage
+  // bounded and avoids stale rows for patios that have been removed.
+  // Supabase JS requires a filter on delete; ts >= epoch matches every row.
+  console.log('[sun-batch] wiping patio_sun_series…')
+  const { error: wipeError } = await supabase
+    .from('patio_sun_series')
+    .delete()
+    .gte('ts', '1970-01-01T00:00:00Z')
+  if (wipeError) {
+    return NextResponse.json(
+      { error: `wipe failed: ${wipeError.message}` },
+      { status: 500 },
+    )
+  }
+
   console.log('[sun-batch] loading patios + buildings…')
-  const [patios, buildings] = await Promise.all([
-    listPatiosFromDb(),
+  const [venues, buildings] = await Promise.all([
+    listVenuesFromDb(),
     loadStaticBuildings(),
   ])
-  console.log(`[sun-batch] ${patios.length} patios, ${buildings.length} buildings (${Date.now() - startedAt} ms)`)
+  const patios = venues.flatMap(v => v.patios)
+  console.log(`[sun-batch] ${patios.length} patios across ${venues.length} venues, ${buildings.length} buildings (${Date.now() - startedAt} ms)`)
 
   if (patios.length === 0) {
     return NextResponse.json({ error: 'no patios in DB' }, { status: 500 })
@@ -107,36 +126,24 @@ export async function GET(req: NextRequest) {
         azimuth_deg: s.azimuthDeg,
         altitude_deg: s.altitudeDeg,
         sun_fraction: Math.max(0, Math.min(1, s.sunFraction)),
+        shadow_geojson: s.shadowGeoJson,
       }))
 
-      for (let i = 0; i < rows.length; i += UPSERT_CHUNK) {
-        const chunk = rows.slice(i, i + UPSERT_CHUNK)
+      for (let i = 0; i < rows.length; i += INSERT_CHUNK) {
+        const chunk = rows.slice(i, i + INSERT_CHUNK)
         const { error } = await supabase
           .from('patio_sun_series')
-          .upsert(chunk, { onConflict: 'patio_id,ts' })
+          .insert(chunk)
         if (error) {
           return NextResponse.json(
-            { error: `upsert failed (${patio.id} / ${ymd}): ${error.message}` },
+            { error: `insert failed (${patio.id} / ${ymd}): ${error.message}` },
             { status: 500 },
           )
         }
       }
       totalRows += rows.length
-      console.log(`[sun-batch] upserted ${rows.length} rows for ${patio.id} / ${ymd}`)
+      console.log(`[sun-batch] inserted ${rows.length} rows for ${patio.id} / ${ymd}`)
     }
-  }
-
-  // Drop yesterday and earlier — the lookahead window is rolling.
-  const todayYmd = ymds[0]
-  const { error: deleteError } = await supabase
-    .from('patio_sun_series')
-    .delete()
-    .lt('local_date', todayYmd)
-  if (deleteError) {
-    return NextResponse.json(
-      { error: `cleanup failed: ${deleteError.message}` },
-      { status: 500 },
-    )
   }
 
   return NextResponse.json({
