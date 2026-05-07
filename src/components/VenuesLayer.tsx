@@ -19,6 +19,8 @@ type Props = {
   activeVenueId: string | null;
   /** Fires when a venue dot is clicked on the map. */
   onSelectVenue?: (id: string) => void;
+  /** Fires on hover enter/leave. Null on leave. Used to prefetch full-day series. */
+  onHoverVenue?: (id: string | null) => void;
 };
 
 const SUNLIT_FILL = '#fff2c2';
@@ -38,6 +40,7 @@ export function VenuesLayer({
   sunPctByVenue,
   activeVenueId,
   onSelectVenue,
+  onHoverVenue,
 }: Props) {
   const polygonsData = useMemo<GeoJSON.FeatureCollection>(() => {
     const features: GeoJSON.Feature[] = [];
@@ -78,6 +81,7 @@ export function VenuesLayer({
         sunPctByVenue={sunPctByVenue}
         activeVenueId={activeVenueId}
         onSelectVenue={onSelectVenue}
+        onHoverVenue={onHoverVenue}
       />
 
       <Source id="active-venue-patios" type="geojson" data={polygonsData}>

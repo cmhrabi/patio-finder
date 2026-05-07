@@ -2,6 +2,7 @@
 -- Apply via `supabase db push` (after `supabase link`) or paste into the SQL editor.
 
 create extension if not exists postgis with schema extensions;
+set local search_path = public, extensions;
 
 -- ---------------------------------------------------------------------------
 -- venues

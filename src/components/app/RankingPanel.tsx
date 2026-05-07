@@ -44,6 +44,8 @@ type Props = {
   tab: RankingTab;
   setTab: (t: RankingTab) => void;
   onSelect: (id: string) => void;
+  /** Fires on row hover enter/leave (null on leave). Drives prefetch. */
+  onHoverVenue?: (id: string | null) => void;
   onToggleFavourite: (id: string) => void;
   onClose?: () => void;
   filters: Filters;
@@ -59,6 +61,7 @@ export function RankingPanel({
   tab,
   setTab,
   onSelect,
+  onHoverVenue,
   onToggleFavourite,
   onClose,
   filters,
@@ -109,6 +112,7 @@ export function RankingPanel({
             favouriteIds={favouriteIds}
             timeLabel={timeLabel}
             onSelect={onSelect}
+            onHoverVenue={onHoverVenue}
             onToggleFavourite={onToggleFavourite}
             onClose={onClose}
           />
@@ -163,6 +167,7 @@ function ListTab({
   favouriteIds,
   timeLabel,
   onSelect,
+  onHoverVenue,
   onToggleFavourite,
   onClose,
 }: {
@@ -172,6 +177,7 @@ function ListTab({
   favouriteIds: ReadonlySet<string>;
   timeLabel: string;
   onSelect: (id: string) => void;
+  onHoverVenue?: (id: string | null) => void;
   onToggleFavourite: (id: string) => void;
   onClose?: () => void;
 }) {
@@ -222,6 +228,8 @@ function ListTab({
               <li
                 key={r.venue.id}
                 className={[styles.row, active && styles.rowActive].filter(Boolean).join(' ')}
+                onPointerEnter={() => onHoverVenue?.(r.venue.id)}
+                onPointerLeave={() => onHoverVenue?.(null)}
               >
                 <button
                   type="button"

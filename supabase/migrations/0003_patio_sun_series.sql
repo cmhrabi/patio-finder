@@ -1,7 +1,7 @@
 -- Precomputed sun-coverage time series per patio.
 -- Populated by the nightly /api/cron/sun-batch route (today + 6 days, 5-min steps).
 -- The UI reads directly from this table — no on-the-fly compute.
-
+set local search_path = public, extensions;
 create table public.patio_sun_series (
   patio_id              uuid not null references public.patios(id) on delete cascade,
   ts                    timestamptz not null,

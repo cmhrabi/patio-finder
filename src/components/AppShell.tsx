@@ -21,7 +21,7 @@ import { clearLegacyPatioCache, fetchVenues } from '@/lib/patios/storage';
 import type { Venue } from '@/lib/patios/types';
 import { getDayTimes } from '@/lib/sun/sunPosition';
 import type { LngLat, SunSample } from '@/lib/sun/types';
-import type { SunSeriesResponse } from '@/app/api/sun-series/route';
+import type { SunSeriesResponse, WireSunSample } from '@/app/api/sun-series/route';
 import styles from './AppShell.module.css';
 
 // Centred on Trinity Bellwoods/Ossington — fits the cluster of seed patios.
@@ -118,9 +118,41 @@ const ymdFmt = new Intl.DateTimeFormat('en-CA', {
   day: '2-digit',
 });
 
+type LoadedWindow = { fromMs: number; toMs: number };
+
+// Fetch a 3 h window of sun samples centered on the current scrub time, and
+// refetch when the scrubber lands within 30 min of either edge. Keeps each
+// request well under PostgREST's row cap regardless of patio count.
+const WINDOW_HALF_MS = 90 * 60_000;
+const REFETCH_MARGIN_MS = 30 * 60_000;
+// How long the scrubber must sit still before we consider the time "settled"
+// and fire a windowed fetch. Long enough that a continuous drag coalesces;
+// short enough that the user doesn't notice the lag when they let go.
+const SETTLE_DELAY_MS = 250;
+
+function parseSamples(samples: WireSunSample[]): SunSample[] {
+  return samples.map((s) => ({
+    time: new Date(s.time),
+    minutesFromSunrise: s.minutesFromSunrise,
+    azimuthDeg: s.azimuthDeg,
+    altitudeDeg: s.altitudeDeg,
+    sunFraction: s.sunFraction,
+    shadowGeoJson: s.shadowGeoJson ?? null,
+  }));
+}
+
+const HOVER_PREFETCH_DELAY_MS = 120;
+
 export default function AppShell() {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [seriesByPatio, setSeriesByPatio] = useState<Record<string, SunSample[]>>({});
+  const [loadedWindow, setLoadedWindow] = useState<LoadedWindow | null>(null);
+  // Full-day series for any patio we've hovered or activated. Persists across
+  // hovers so re-visiting a venue is instant. Wins over the windowed cache
+  // when looking up shadows / sun%, so scrubbing on a known patio is smooth.
+  const [fullDayByPatio, setFullDayByPatio] = useState<Record<string, SunSample[]>>({});
+  const fullDayInflightRef = useRef<Set<string>>(new Set());
+  const hoverDebounceRef = useRef<number | null>(null);
   const [activeVenueId, setActiveVenueId] = useState<string | null>(null);
   const [tab, setTab] = useState<RankingTab>('ranking');
   const [filters, setFilters] = useState<Filters>(() => emptyFilters());
@@ -128,6 +160,14 @@ export default function AppShell() {
   const [date, setDate] = useState<Date>(() => dayAnchorUTC(new Date()));
   /** Absolute scrub time, ms-since-epoch. Defaults to "now" on the selected day. */
   const [currentMs, setCurrentMs] = useState<number>(() => Date.now());
+  /**
+   * Debounced mirror of `currentMs` used to drive the windowed map fetch. While
+   * the user is actively scrubbing, `currentMs` updates every frame; firing
+   * (and then aborting) a network request on every margin crossing spams the
+   * server. We debounce by ~250 ms so a fast scrub fires at most one GET when
+   * the user pauses, plus a flush on release via the timeline's onCommit.
+   */
+  const [settledMs, setSettledMs] = useState<number>(() => Date.now());
 
   const { favourites, toggle: toggleFavourite } = useFavourites();
   const mapRef = useRef<MapRef | null>(null);
@@ -150,38 +190,21 @@ export default function AppShell() {
     };
   }, []);
 
-  // Fetch the precomputed sun-fraction series for the selected date. Server
-  // returns ISO strings for ts; convert to Date once here so downstream memos
-  // can do arithmetic. Missing rows → empty record → UI shows "—".
+  // Reset every per-date cache when the user switches days — every entry's
+  // timestamps belong to a different `local_date`.
   useEffect(() => {
-    const ymd = ymdFmt.format(date);
-    let cancelled = false;
-    void fetch(`/api/sun-series?date=${ymd}`, { cache: 'no-store' })
-      .then((res) => (res.ok ? (res.json() as Promise<SunSeriesResponse>) : null))
-      .then((body) => {
-        if (cancelled || !body) return;
-        const out: Record<string, SunSample[]> = {};
-        for (const [patioId, samples] of Object.entries(body.byPatioId)) {
-          out[patioId] = samples.map((s) => ({
-            time: new Date(s.time),
-            minutesFromSunrise: s.minutesFromSunrise,
-            azimuthDeg: s.azimuthDeg,
-            altitudeDeg: s.altitudeDeg,
-            sunFraction: s.sunFraction,
-            shadowGeoJson: s.shadowGeoJson ?? null,
-          }));
-        }
-        setSeriesByPatio(out);
-      })
-      .catch((e) => {
-        // eslint-disable-next-line no-console
-        console.error('Failed to load sun series:', e);
-        if (!cancelled) setSeriesByPatio({});
-      });
-    return () => {
-      cancelled = true;
-    };
+    setSeriesByPatio({});
+    setLoadedWindow(null);
+    setFullDayByPatio({});
+    fullDayInflightRef.current.clear();
   }, [date]);
+
+  // Debounce currentMs → settledMs so the windowed fetch fires at most once
+  // per scrub "settle", not on every frame of a drag.
+  useEffect(() => {
+    const id = window.setTimeout(() => setSettledMs(currentMs), SETTLE_DELAY_MS);
+    return () => window.clearTimeout(id);
+  }, [currentMs]);
 
   const dayTimes = useMemo(
     () => getDayTimes(date, REPRESENTATIVE_POINT[1], REPRESENTATIVE_POINT[0]),
@@ -189,6 +212,133 @@ export default function AppShell() {
   );
   const sunrise = dayTimes.sunrise && !isNaN(dayTimes.sunrise.getTime()) ? dayTimes.sunrise : null;
   const sunset = dayTimes.sunset && !isNaN(dayTimes.sunset.getTime()) ? dayTimes.sunset : null;
+
+  // Map data fetcher: load a 3 h window around the *settled* scrub time.
+  // Refetch when the settled time drifts within REFETCH_MARGIN_MS of either
+  // edge of the loaded window. Driven by `settledMs` (debounced from
+  // `currentMs`) so a continuous drag fires at most one GET per pause, not
+  // one per frame.
+  useEffect(() => {
+    if (!sunrise || !sunset) return;
+    const dayStart = sunrise.getTime();
+    const dayEnd = sunset.getTime();
+    const inDay = Math.min(dayEnd, Math.max(dayStart, settledMs));
+
+    const stillInside =
+      loadedWindow !== null &&
+      inDay >= loadedWindow.fromMs + REFETCH_MARGIN_MS &&
+      inDay <= loadedWindow.toMs - REFETCH_MARGIN_MS;
+    if (stillInside) return;
+
+    const targetFrom = Math.max(dayStart, inDay - WINDOW_HALF_MS);
+    const targetTo = Math.min(dayEnd, inDay + WINDOW_HALF_MS);
+
+    const ymd = ymdFmt.format(date);
+    const params = new URLSearchParams({
+      date: ymd,
+      fromTs: new Date(targetFrom).toISOString(),
+      toTs: new Date(targetTo).toISOString(),
+    });
+    const ctrl = new AbortController();
+    void fetch(`/api/sun-series?${params.toString()}`, {
+      cache: 'no-store',
+      signal: ctrl.signal,
+    })
+      .then((res) => (res.ok ? (res.json() as Promise<SunSeriesResponse>) : null))
+      .then((body) => {
+        if (!body) return;
+        const out: Record<string, SunSample[]> = {};
+        for (const [patioId, samples] of Object.entries(body.byPatioId)) {
+          out[patioId] = parseSamples(samples);
+        }
+        setSeriesByPatio(out);
+        setLoadedWindow({ fromMs: targetFrom, toMs: targetTo });
+      })
+      .catch((e: unknown) => {
+        if ((e as { name?: string })?.name === 'AbortError') return;
+        // eslint-disable-next-line no-console
+        console.error('Failed to load sun series window:', e);
+      });
+    return () => ctrl.abort();
+  }, [date, settledMs, loadedWindow, sunrise, sunset]);
+
+  // Fetch full-day series for one patio and merge into the persistent cache.
+  // No-ops if the patio is already cached or in flight. Per-patio queries stay
+  // tiny (~175 rows) so each call is well under the row cap.
+  const ensureFullDayLoaded = useCallback(
+    (patioIds: string[]) => {
+      if (patioIds.length === 0) return;
+      const ymd = ymdFmt.format(date);
+      for (const pid of patioIds) {
+        const inflightKey = `${ymd}|${pid}`;
+        if (fullDayInflightRef.current.has(inflightKey)) continue;
+        // Use the ref via getter on each call so this stays a stable callback.
+        // Skip if we already have a full day cached for this patio.
+        // (If a stale entry from an old date sneaks in, the date-reset effect
+        // clears the map.)
+        fullDayInflightRef.current.add(inflightKey);
+        void fetch(`/api/sun-series?date=${ymd}&patioId=${pid}`, { cache: 'no-store' })
+          .then((res) => (res.ok ? (res.json() as Promise<SunSeriesResponse>) : null))
+          .then((body) => {
+            if (!body) return;
+            const samples = body.byPatioId[pid] ?? [];
+            setFullDayByPatio((prev) =>
+              prev[pid] ? prev : { ...prev, [pid]: parseSamples(samples) },
+            );
+          })
+          .catch((e: unknown) => {
+            // eslint-disable-next-line no-console
+            console.error(`Failed to load full-day series for ${pid}:`, e);
+          })
+          .finally(() => {
+            fullDayInflightRef.current.delete(inflightKey);
+          });
+      }
+    },
+    [date],
+  );
+
+  // Hover prefetch: debounce 120 ms so quickly skimming the cursor across rows
+  // / dots doesn't fire a fetch for every venue. Calling with `null` cancels a
+  // pending prefetch.
+  const handleHoverVenue = useCallback(
+    (venueId: string | null) => {
+      if (hoverDebounceRef.current !== null) {
+        window.clearTimeout(hoverDebounceRef.current);
+        hoverDebounceRef.current = null;
+      }
+      if (!venueId) return;
+      hoverDebounceRef.current = window.setTimeout(() => {
+        const venue = venues.find((v) => v.id === venueId);
+        if (!venue) return;
+        const need = venue.patios
+          .map((p) => p.id)
+          .filter((id) => !fullDayByPatio[id]);
+        if (need.length > 0) ensureFullDayLoaded(need);
+      }, HOVER_PREFETCH_DELAY_MS);
+    },
+    [venues, fullDayByPatio, ensureFullDayLoaded],
+  );
+
+  // Active-venue prefetch: clicking a venue without first hovering still needs
+  // the full-day data for the sparkline + smooth shadow scrub. No-ops when the
+  // hover prefetch already populated the cache.
+  useEffect(() => {
+    if (!activeVenueId) return;
+    const venue = venues.find((v) => v.id === activeVenueId);
+    if (!venue) return;
+    const need = venue.patios.map((p) => p.id).filter((id) => !fullDayByPatio[id]);
+    if (need.length > 0) ensureFullDayLoaded(need);
+  }, [activeVenueId, venues, fullDayByPatio, ensureFullDayLoaded]);
+
+  useEffect(
+    () => () => {
+      if (hoverDebounceRef.current !== null) {
+        window.clearTimeout(hoverDebounceRef.current);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!sunrise || !sunset) return;
@@ -200,12 +350,14 @@ export default function AppShell() {
   }, [sunrise, sunset]);
 
   // For each patio, find the sample closest to currentMs. Reused by both the
-  // sun% and shadow-polygon lookups below.
+  // sun% and shadow-polygon lookups below. Prefer the full-day cache (hover-
+  // or click-prefetched) over the windowed cache so scrubbing a known patio
+  // never has to wait on a window refetch.
   const closestSampleByPatio = useMemo<Record<string, SunSample | null>>(() => {
     const out: Record<string, SunSample | null> = {};
     for (const v of venues) {
       for (const p of v.patios) {
-        const series = seriesByPatio[p.id];
+        const series = fullDayByPatio[p.id] ?? seriesByPatio[p.id];
         if (!series || series.length === 0) {
           out[p.id] = null;
           continue;
@@ -223,7 +375,7 @@ export default function AppShell() {
       }
     }
     return out;
-  }, [venues, seriesByPatio, currentMs]);
+  }, [venues, seriesByPatio, fullDayByPatio, currentMs]);
 
   const sunPctByPatio = useMemo<Record<string, number | null>>(() => {
     const out: Record<string, number | null> = {};
@@ -266,13 +418,14 @@ export default function AppShell() {
 
   // For the details panel sparkline: the active venue's best-overall patio
   // (the one with the highest *peak* sun across the day) carries the most
-  // signal, so its full-day series is what we plot.
+  // signal, so its full-day series is what we plot. Sourced from the shared
+  // full-day cache populated by hover + click prefetch.
   const activeVenueSeries = useMemo<SunSample[]>(() => {
     if (!activeVenue) return [];
     let best: SunSample[] = [];
     let bestPeak = -1;
     for (const p of activeVenue.patios) {
-      const series = seriesByPatio[p.id];
+      const series = fullDayByPatio[p.id];
       if (!series || series.length === 0) continue;
       let peak = 0;
       for (const s of series) if (s.sunFraction > peak) peak = s.sunFraction;
@@ -282,7 +435,7 @@ export default function AppShell() {
       }
     }
     return best;
-  }, [activeVenue, seriesByPatio]);
+  }, [activeVenue, fullDayByPatio]);
 
 
   /** Fly the map to a venue's location at a closer zoom + tilted angle. */
@@ -397,6 +550,7 @@ export default function AppShell() {
           sunPctByVenue={sunPctByVenue}
           activeVenueId={activeVenueId}
           onSelectVenue={handleSelectVenue}
+          onHoverVenue={handleHoverVenue}
         />
         <div className={styles.controlsSlot}>
           <MapControls onRecenter={flyToOverview} showRecenter={!!activeVenueId} />
@@ -425,6 +579,7 @@ export default function AppShell() {
             tab={tab}
             setTab={setTab}
             onSelect={handleSelectVenue}
+            onHoverVenue={handleHoverVenue}
             onToggleFavourite={toggleFavourite}
             onClose={() => setPanelOpen(false)}
             filters={filters}
@@ -477,6 +632,7 @@ export default function AppShell() {
           sunset={sunset}
           currentMs={currentMs}
           onChange={setCurrentMs}
+          onCommit={(ms) => setSettledMs(ms)}
         />
       </div>
     </div>

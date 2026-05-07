@@ -3,6 +3,7 @@
 --
 -- security_invoker=on => RLS on the underlying tables is still enforced
 -- (otherwise the view would run as its owner, bypassing RLS).
+set local search_path = public, extensions;
 
 create or replace view public.venues_geo
   with (security_invoker = on) as

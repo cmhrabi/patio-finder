@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const MAX_OFFSET_DAYS = 31
 
 type SeriesRow = {
@@ -30,7 +31,8 @@ export type SunSeriesResponse = {
 }
 
 export async function GET(req: NextRequest) {
-  const date = req.nextUrl.searchParams.get('date')
+  const params = req.nextUrl.searchParams
+  const date = params.get('date')
   if (!date || !YMD_RE.test(date)) {
     return NextResponse.json({ error: 'date=YYYY-MM-DD required' }, { status: 400 })
   }
@@ -46,13 +48,46 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'date out of range' }, { status: 400 })
   }
 
+  const fromTs = params.get('fromTs')
+  const toTs = params.get('toTs')
+  const patioId = params.get('patioId')
+
+  if (fromTs !== null && !Number.isFinite(Date.parse(fromTs))) {
+    return NextResponse.json({ error: 'invalid fromTs' }, { status: 400 })
+  }
+  if (toTs !== null && !Number.isFinite(Date.parse(toTs))) {
+    return NextResponse.json({ error: 'invalid toTs' }, { status: 400 })
+  }
+  if (fromTs !== null && toTs !== null && Date.parse(fromTs) > Date.parse(toTs)) {
+    return NextResponse.json({ error: 'fromTs must be <= toTs' }, { status: 400 })
+  }
+  if (patioId !== null && !UUID_RE.test(patioId)) {
+    return NextResponse.json({ error: 'invalid patioId' }, { status: 400 })
+  }
+
+  // Force callers to slice the request. Returning the full day across every
+  // patio in one shot is what hit PostgREST's row cap and clipped the chart at
+  // ~3pm; making the contract explicit prevents that regression.
+  const hasWindow = fromTs !== null && toTs !== null
+  if (!hasWindow && !patioId) {
+    return NextResponse.json(
+      { error: 'specify a time window (fromTs+toTs) or patioId' },
+      { status: 400 },
+    )
+  }
+
   const supabase = await createSupabaseServerClient()
-  const { data, error } = await supabase
+  let query = supabase
     .from('patio_sun_series')
     .select('patio_id, ts, minutes_from_sunrise, azimuth_deg, altitude_deg, sun_fraction, shadow_geojson')
     .eq('local_date', date)
     .order('ts', { ascending: true })
-    .returns<SeriesRow[]>()
+
+  if (fromTs !== null) query = query.gte('ts', fromTs)
+  if (toTs !== null) query = query.lte('ts', toTs)
+  if (patioId !== null) query = query.eq('patio_id', patioId)
+
+  const { data, error } = await query.returns<SeriesRow[]>()
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })

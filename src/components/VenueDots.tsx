@@ -17,6 +17,8 @@ type Props = {
   /** Skipped: we don't render a dot for the active venue — its polygons take over. */
   activeVenueId: string | null;
   onSelectVenue?: (id: string) => void;
+  /** Fires on hover enter/leave (null on leave). Drives full-day series prefetch. */
+  onHoverVenue?: (id: string | null) => void;
   /** Pixel diameter of each dot. */
   size?: number;
 };
@@ -36,6 +38,7 @@ export function VenueDots({
   sunPctByVenue,
   activeVenueId,
   onSelectVenue,
+  onHoverVenue,
   size = 18,
 }: Props) {
   return (
@@ -56,7 +59,12 @@ export function VenueDots({
               onSelectVenue?.(v.id);
             }}
           >
-            <SplitDot pct={pct} size={size} title={v.name} />
+            <span
+              onPointerEnter={() => onHoverVenue?.(v.id)}
+              onPointerLeave={() => onHoverVenue?.(null)}
+            >
+              <SplitDot pct={pct} size={size} title={v.name} />
+            </span>
           </Marker>
         );
       })}
