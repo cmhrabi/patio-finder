@@ -10,7 +10,13 @@ type GeoJsonFC = {
   type: 'FeatureCollection';
   features: Array<{
     type: 'Feature';
-    properties: { heightM?: number } | null;
+    properties: {
+      heightM?: number;
+      heightSource?: 'avg' | 'max';
+      minH?: number;
+      maxH?: number;
+      avgH?: number;
+    } | null;
     geometry:
       | { type: 'Polygon'; coordinates: number[][][] }
       | { type: 'MultiPolygon'; coordinates: number[][][][] };
@@ -33,12 +39,17 @@ export function loadStaticBuildings(): Promise<Building[]> {
     for (const f of fc.features) {
       const heightM = Number(f.properties?.heightM ?? 0);
       if (!isFinite(heightM) || heightM <= 0) continue;
+      const heightSource = f.properties?.heightSource;
+      const minH = f.properties?.minH;
+      const maxH = f.properties?.maxH;
+      const avgH = f.properties?.avgH;
+      const meta = { heightSource, minH, maxH, avgH };
       if (f.geometry.type === 'Polygon') {
-        out.push({ footprint: f.geometry.coordinates, heightM });
+        out.push({ footprint: f.geometry.coordinates, heightM, ...meta });
       } else if (f.geometry.type === 'MultiPolygon') {
         // Split each polygon out — the sun pipeline takes a single ring set per building.
         for (const poly of f.geometry.coordinates) {
-          out.push({ footprint: poly, heightM });
+          out.push({ footprint: poly, heightM, ...meta });
         }
       }
     }

@@ -11,7 +11,7 @@ import type {
 } from './types';
 import { makeFrame } from './projection';
 import { getDayTimes, getSunPosition } from './sunPosition';
-import { computeCoverage } from './coverage';
+import { computeCoverage, clipHostBuildings } from './coverage';
 
 const STEP_MINUTES = 5;
 const ALT_MIN_DEG = 3;
@@ -75,12 +75,16 @@ export function computeSeries(args: ComputeSeriesArgs): SunSample[] {
     frame.ringToMetres(r as Ring),
   );
 
-  // Pre-project all buildings within a generous absolute cap (2 km). Buildings
-  // further away than this can't cast meaningful shadows during patio hours.
-  const ABSOLUTE_MAX_M = 200;
+  // Pre-project all buildings within a generous absolute cap. The per-step
+  // filter below (`b.distM <= b.heightM / tan(alt) + PATIO_RADIUS_M`) is what
+  // actually decides relevance per timestep; this cap just bounds the upfront
+  // projection cost. 2 km is enough for a 100 m building at the 3° altitude
+  // floor (~1.9 km shadow) — anything taller/farther is rare in this dataset
+  // and gets caught by the per-step filter.
+  const ABSOLUTE_MAX_M = 300;
   const snap = (v: number) => Math.round(v * 1000) / 1000;
 
-  const projected: (ProjectedBuilding & { distM: number })[] = [];
+  const projectedAll: (ProjectedBuilding & { distM: number })[] = [];
   for (const b of buildings) {
     if (!b.footprint?.[0] || b.footprint[0].length < 4) continue;
     const fp = b.footprint.map(r =>
@@ -89,10 +93,16 @@ export function computeSeries(args: ComputeSeriesArgs): SunSample[] {
     const c = ringCentroid(fp[0]);
     const dist = Math.hypot(c[0], c[1]);
     if (dist > ABSOLUTE_MAX_M) continue;
-    projected.push({ footprint: fp, heightM: b.heightM, distM: dist });
+    projectedAll.push({ footprint: fp, heightM: b.heightM, distM: dist });
   }
+  // Clip out the part of any building footprint that overlaps the patio
+  // polygon — see clipHostBuildings docs in coverage.ts. The building's real
+  // walls still cast shadow on whatever is east/away from it; we only remove
+  // the bit drawn on top of the patio (which makes shadows read as 100%).
+  const projected = clipHostBuildings(patioMetric, projectedAll);
+  const clippedDelta = projected.length - projectedAll.length;
 
-  console.log(`[timeSeries] ${patioId} / ${ymdLocal(date)}: ${projected.length} buildings within ${ABSOLUTE_MAX_M} m`)
+  console.log(`[timeSeries] ${patioId} / ${ymdLocal(date)}: ${projected.length} buildings within ${ABSOLUTE_MAX_M} m (host-clip delta: ${clippedDelta >= 0 ? '+' : ''}${clippedDelta})`)
   const times = getDayTimes(date, lat0, lon0);
   const sunrise = times.sunrise;
   const sunset = times.sunset;

@@ -49,6 +49,115 @@ function safeUnion(shadows: PCMultiPolygon[]): PCMultiPolygon {
   return merged;
 }
 
+/**
+ * Approximate outward buffer of a simple polygon by moving each vertex
+ * `distance` metres further from the polygon centroid. Good enough for the
+ * small (≤2 m) buffers we want here on patio polygons that are roughly
+ * convex quadrilaterals; not a substitute for a proper Minkowski-disc offset.
+ */
+function expandPolygonAroundCentroid(
+  polygon: MetricPolygon,
+  distance: number,
+): MetricPolygon {
+  if (distance <= 0) return polygon;
+  const outer = polygon[0];
+  if (!outer || outer.length < 3) return polygon;
+
+  let cx = 0;
+  let cy = 0;
+  const last = outer.length - 1;
+  const closed =
+    outer.length > 1 &&
+    outer[0][0] === outer[last][0] &&
+    outer[0][1] === outer[last][1];
+  const stop = closed ? last : outer.length;
+  for (let i = 0; i < stop; i++) {
+    cx += outer[i][0];
+    cy += outer[i][1];
+  }
+  cx /= stop;
+  cy /= stop;
+
+  const expanded: number[][] = [];
+  for (let i = 0; i < stop; i++) {
+    const [x, y] = outer[i];
+    const dx = x - cx;
+    const dy = y - cy;
+    const len = Math.hypot(dx, dy);
+    if (len === 0) {
+      expanded.push([x, y]);
+      continue;
+    }
+    expanded.push([x + (dx / len) * distance, y + (dy / len) * distance]);
+  }
+  expanded.push([expanded[0][0], expanded[0][1]]);
+  return [expanded as unknown as MetricPolygon[0]];
+}
+
+/**
+ * For each building whose footprint overlaps the patio polygon, subtract a
+ * 1 m-buffered version of the patio out of the building's footprint. Patios
+ * in this dataset are drawn by hand and frequently extend a metre or so
+ * *into* the venue's host building (sidewalk patio polygons whose west edge
+ * sits right against — or slightly inside — the storefront wall). When the
+ * building's footprint encloses part of the patio, the shadow it casts reads
+ * as 100% covering the patio (because the patio is inside the building's own
+ * footprint, which is itself part of every shadow polygon).
+ *
+ * Clipping with a small buffer (rather than dropping the building entirely)
+ * keeps the building's real walls casting shadow on whatever is on the far
+ * side of it — we only pull the building back a metre from the patio so that
+ * geometry mismatch in the source data doesn't turn the patio into the
+ * inside of its venue's footprint.
+ *
+ * If the clip leaves nothing (the buffered patio completely contains the
+ * footprint — unusual), drop the building entirely.
+ */
+const HOST_CLIP_BUFFER_M = 3;
+
+export function clipHostBuildings<B extends ProjectedBuilding>(
+  patio: MetricPolygon,
+  buildings: B[],
+): B[] {
+  const buffered = expandPolygonAroundCentroid(patio, HOST_CLIP_BUFFER_M);
+  const out: B[] = [];
+  for (const b of buildings) {
+    let inter: PCMultiPolygon = [];
+    try {
+      inter = polygonClipping.intersection(
+        buffered as unknown as PCPolygon,
+        b.footprint as unknown as PCPolygon,
+      );
+    } catch {
+      out.push(b);
+      continue;
+    }
+    if (inter.length === 0) {
+      out.push(b);
+      continue;
+    }
+    let diff: PCMultiPolygon = [];
+    try {
+      diff = polygonClipping.difference(
+        b.footprint as unknown as PCPolygon,
+        buffered as unknown as PCPolygon,
+      );
+    } catch {
+      // On clipping failure, keep the original — worst case is the previous
+      // over-shading; this isn't worse than what we had.
+      out.push(b);
+      continue;
+    }
+    if (diff.length === 0) continue; // buffered patio fully contains building
+    // polygon-clipping returns a MultiPolygon; emit one Building per polygon
+    // so the downstream pipeline can keep treating each as a single Polygon.
+    for (const poly of diff) {
+      out.push({ ...b, footprint: poly as unknown as MetricPolygon });
+    }
+  }
+  return out;
+}
+
 export type SunCoverage = {
   sunFraction: number;
   // Intersection of the unioned building shadows with the patio, in the metric

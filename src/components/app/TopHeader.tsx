@@ -11,8 +11,6 @@ type Props = {
   region?: string;
   selectedDate: Date;
   onSelectDate: (d: Date) => void;
-  /** User initials shown in the avatar. */
-  userInitials?: string;
 };
 
 const TZ = 'America/Toronto';
@@ -39,7 +37,7 @@ function isSameTorontoDay(a: Date, b: Date): boolean {
   );
 }
 
-export function TopHeader({ patioCount, region = 'Downtown', selectedDate, onSelectDate, userInitials = 'JC' }: Props) {
+export function TopHeader({ patioCount, region = 'Downtown', selectedDate, onSelectDate }: Props) {
   const today = useMemo(() => startOfTorontoDayUTC(new Date()), []);
   const days = useMemo(() => {
     const out: Date[] = [];
@@ -85,9 +83,6 @@ export function TopHeader({ patioCount, region = 'Downtown', selectedDate, onSel
 
       <div className={styles.right}>
         <WeatherChip />
-        <button type="button" aria-label="Account" className={styles.avatar}>
-          {userInitials}
-        </button>
       </div>
     </header>
   );

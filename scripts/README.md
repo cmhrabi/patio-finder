@@ -2,7 +2,7 @@
 
 ## buildings-fetch.ts (canonical)
 
-Pulls building footprints + heights from OpenStreetMap (via the Overpass API) for the bounding box that covers every patio in the DB plus a ~2 km shadow-reach buffer, and writes the result to `public/buildings.geojson` in the shape `loadStaticBuildings()` expects.
+Reads the City of Toronto 3D Massing dataset (LiDAR-derived building footprints with `MAX_HEIGHT` / `AVG_HEIGHT`) cached at `scripts/.cache/3dmassing.geojson` and writes `public/buildings.geojson` in the shape `loadStaticBuildings()` expects.
 
 ### Run
 
@@ -10,31 +10,42 @@ Pulls building footprints + heights from OpenStreetMap (via the Overpass API) fo
 npm run buildings:fetch
 ```
 
-Requires `.env.local` with `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SECRET_KEY` (the script reads patios from Supabase to derive the bbox).
+No network or DB access — the script only reads the local cache file and writes the public GeoJSON.
 
 ### Height resolution
 
-Per-feature `heightM` is filled with the cascade — see `src/lib/buildings/osmHeight.ts`:
+Per-feature `heightM` is picked from the massing properties:
 
-1. `tags.height` (or `tags['building:height']`), parsed as metres
-2. `tags['building:levels'] × 3 m`
-3. **6 m default** (≈ 2 storeys)
+1. `MAX_HEIGHT` if `> 0`
+2. else `AVG_HEIGHT` if `> 0`
+3. else the polygon is dropped
 
-The default kicks in for any building with neither tag — common for low-rise residential. It's deliberately conservative; if you see a tall building treated as 6 m, tag it on OSM and re-run.
+### Regenerating the massing cache
+
+`scripts/.cache/3dmassing.geojson` is produced from the City's shapefile via `ogr2ogr`. The current bbox covers the patio neighbourhoods we care about — widen `-spat` if patios are added outside it.
+
+```bash
+ogr2ogr -f GeoJSON -t_srs EPSG:4326 \
+  -spat -79.464 43.630 -79.365 43.689 -spat_srs EPSG:4326 \
+  -select MIN_HEIGHT,MAX_HEIGHT,AVG_HEIGHT \
+  scripts/.cache/3dmassing.geojson \
+  scripts/.cache/3dmassing/3DMassingShapefile_2025_WGS84.shp
+```
+
+Then re-run `npm run buildings:fetch`.
 
 ### Refresh cadence
 
 Run manually:
 
-- when patios are added in a new neighbourhood (so the bbox covers the new area)
-- roughly quarterly to pick up OSM contributions
-- after any complaint that "this patio's sun coverage looks wrong"
+- when the City publishes a new 3D Massing shapefile (roughly annually)
+- when patios are added in a neighbourhood outside the current `-spat` bbox
 
 Commit the regenerated `public/buildings.geojson`.
 
 ### Attribution
 
-> © OpenStreetMap contributors
+> Contains information licensed under the Open Government Licence – Toronto.
 
 Surface this in the app footer when the dataset is in use.
 
@@ -51,7 +62,7 @@ Override the URL via `SUN_BATCH_URL` if you're hitting a remote env.
 
 ## prepare-buildings.mjs (legacy)
 
-The previous pipeline that pulled the City of Toronto 3D Massing shapefile and clipped it to a single neighbourhood. Kept for reference; superseded by `buildings-fetch.ts`, which uses OSM and covers all patios in one pass. Don't run unless you specifically want Massing data.
+The previous pipeline that pulled the City of Toronto 3D Massing shapefile and clipped it to a single neighbourhood. Kept for reference; superseded by `buildings-fetch.ts`, which now consumes the city-wide massing cache directly.
 
 ## generate-tokens.ts / seed.ts
 

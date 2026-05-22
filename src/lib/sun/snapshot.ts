@@ -1,7 +1,7 @@
 import type { Building, LngLat, MetricPolygon, ProjectedBuilding, Ring } from './types';
 import { makeFrame } from './projection';
 import { getSunPosition } from './sunPosition';
-import { computeCoverage } from './coverage';
+import { computeCoverage, clipHostBuildings } from './coverage';
 
 /** Hard floor when the sun is so low the shadow filter would keep everything. */
 const ALT_MIN_DEG = 8;
@@ -102,9 +102,15 @@ export function computeSunSnapshotAt(
     projected.push({ footprint: fp, heightM: b.heightM });
   }
 
+  // Subtract the patio polygon out of any building footprint that overlaps
+  // it — see clipHostBuildings docs in coverage.ts. The building still casts
+  // a shadow from its real walls; we only remove the bit drawn on top of
+  // the patio (which made shadows read as 100%-covering).
+  const clipped = clipHostBuildings(patioMetric, projected);
+
   const { sunFraction: fraction } = computeCoverage(
     patioMetric,
-    projected,
+    clipped,
     azimuthDeg,
     altitudeDeg,
   );

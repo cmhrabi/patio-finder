@@ -29,6 +29,13 @@ export type SunSample = {
 export type Building = {
   footprint: number[][][];
   heightM: number;
+  /** Which 3D Massing field the height came from. 'avg' is preferred for bulk
+   * occlusion; 'max' is a fallback that includes parapets / antennae / spikes. */
+  heightSource?: 'avg' | 'max';
+  /** Raw source heights, retained for diagnostics. */
+  minH?: number;
+  maxH?: number;
+  avgH?: number;
 };
 
 export type ProjectedBuilding = {
