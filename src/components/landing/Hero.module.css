@@ -128,3 +128,33 @@
     font-size: 28px;
   }
 }
+
+@media (max-width: 720px) {
+  .root {
+    gap: var(--space-6);
+    padding: var(--space-6) var(--space-4);
+  }
+  .copy {
+    gap: var(--space-4);
+  }
+  .ctas {
+    gap: var(--space-2);
+    margin-top: var(--space-1);
+  }
+  .primary,
+  .secondary {
+    font-size: 15px;
+    padding: 12px 18px;
+  }
+  .stats {
+    gap: var(--space-5);
+    margin-top: var(--space-5);
+    flex-wrap: wrap;
+  }
+  .stat {
+    flex: 1 1 30%;
+  }
+  .statValue {
+    font-size: 22px;
+  }
+}

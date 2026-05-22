@@ -114,3 +114,134 @@
 .attributionSlot > * {
   pointer-events: auto;
 }
+
+/* Bottom pill that lets the user reopen the venue details sheet after closing
+ * it on mobile. Sits above the timeline so it doesn't fight with the scrubber.
+ * Desktop never renders this (gated in TSX). */
+.detailsOpener {
+  position: absolute;
+  right: var(--space-4);
+  bottom: calc(var(--space-4) + 96px + var(--space-3));
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - var(--space-7));
+  appearance: none;
+  border: 1px solid var(--map-line);
+  background: var(--map-panel);
+  color: var(--map-text);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 10px 16px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+}
+
+.detailsOpenerName {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60vw;
+}
+
+.detailsOpenerPct {
+  color: var(--sun-300);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Mobile: ≤720px ---------------------------------------------------- */
+
+@media (max-width: 720px) {
+  .headerSlot {
+    top: var(--space-3);
+    left: var(--space-3);
+    right: var(--space-3);
+  }
+
+  /* Rankings panel becomes a full-bleed sheet over the map. */
+  .panelSlot {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    /* Drop the desktop anchoring; the panel's own .root takes the full height. */
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+
+  /* Rankings pill — sits just under the compact mobile header. The
+   * date-pill row is the tallest element in the header (~56px). Bump
+   * z-index above the header so the pill is never clipped if the header
+   * grows a row taller (e.g. system text-size bumps). */
+  .panelOpener {
+    top: calc(var(--space-3) + 56px + var(--space-3));
+    left: var(--space-3);
+    z-index: 6;
+    padding: 12px 18px;
+    font-size: 14px;
+    min-height: 44px;
+  }
+
+  /* Time pill is squeezed between the timeline and the controls cluster;
+   * tighten its bottom anchor to follow the new timeline height. */
+  .timePillSlot {
+    bottom: calc(var(--space-3) + 80px + var(--space-2));
+  }
+
+  .controlsSlot {
+    top: calc(var(--space-3) + 56px + var(--space-3));
+    right: var(--space-3);
+    z-index: 6;
+  }
+
+  /* The right-shift for the details panel makes no sense on mobile (the
+   * panel covers the full screen anyway). */
+  .root[data-details-open='true'] .controlsSlot {
+    right: var(--space-3);
+  }
+
+  /* Details panel becomes a full-bleed sheet too. */
+  .detailsSlot {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+
+  /* Details opener pill — top-right, parallel to the rankings pill on the
+   * left. Both sit just below the header so they're easy to spot. */
+  .detailsOpener {
+    top: calc(var(--space-3) + 56px + var(--space-3));
+    right: var(--space-3);
+    bottom: auto;
+    min-height: 44px;
+    padding: 10px 16px;
+    z-index: 6;
+  }
+  .detailsOpenerName {
+    max-width: 50vw;
+  }
+  /* Push the zoom/recenter cluster below the venue pill so they don't stack. */
+  .root[data-mobile='true'][data-details-open='true'] .controlsSlot {
+    top: calc(var(--space-3) + 56px + var(--space-3) + 44px + var(--space-2));
+  }
+
+  .timelineSlot {
+    left: var(--space-3);
+    right: var(--space-3);
+    bottom: var(--space-3);
+  }
+
+  .attributionSlot {
+    right: var(--space-3);
+    bottom: calc(var(--space-3) + 80px + var(--space-2));
+  }
+}

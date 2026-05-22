@@ -73,3 +73,15 @@
   color: var(--map-text);
   border-bottom-color: var(--map-text-mute);
 }
+
+@media (max-width: 720px) {
+  .btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .attribution {
+    font-size: 9px;
+    padding: 3px 8px;
+  }
+}

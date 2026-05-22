@@ -382,3 +382,91 @@
   cursor: pointer;
   color: var(--map-text);
 }
+
+@media (max-width: 720px) {
+  .root {
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    border: 0;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: var(--map-panel);
+    box-shadow: none;
+  }
+
+  .tabs {
+    padding: 4px var(--space-2) 0;
+  }
+
+  .tab {
+    padding: 14px 8px;
+    font-size: 14px;
+    min-height: 44px;
+  }
+
+  .body {
+    padding: var(--space-4) var(--space-4) var(--space-6);
+  }
+
+  .header {
+    margin-bottom: var(--space-4);
+  }
+
+  .close {
+    width: 40px;
+    height: 40px;
+  }
+
+  .row {
+    padding: 6px 8px 6px 6px;
+  }
+
+  .rowInner {
+    padding: 8px 6px;
+    min-height: 56px;
+  }
+
+  .thumb {
+    width: 56px;
+    height: 56px;
+  }
+
+  .name {
+    font-size: 17px;
+  }
+
+  .rowMeta {
+    font-size: 13px;
+  }
+
+  .pct,
+  .pctMute {
+    font-size: 13px;
+  }
+
+  .searchField {
+    padding: 0 14px;
+  }
+
+  /* iOS Safari zooms when an input has font-size <16px on focus. Bumping to
+   * 16px on mobile prevents that jank. */
+  .searchInput {
+    font-size: 16px;
+    padding: 12px 0 12px 10px;
+  }
+
+  .toggleRow {
+    padding: var(--space-3) 0;
+  }
+
+  .checkbox {
+    width: 22px;
+    height: 22px;
+  }
+
+  .checkItem {
+    padding: 4px 0;
+  }
+}

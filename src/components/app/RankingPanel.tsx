@@ -181,7 +181,7 @@ function ListTab({
   onToggleFavourite: (id: string) => void;
   onClose?: () => void;
 }) {
-  let eyebrow = 'Sunny right now';
+  let eyebrow: string | null = null;
   let heading = `Ranked at ${timeLabel}`;
   let emptyMessage = 'No venues match yet.';
   if (tab === 'all') {
@@ -197,7 +197,7 @@ function ListTab({
   return (
     <Stack gap="3">
       <header className={styles.header}>
-        <Eyebrow accent={tab === 'ranking'}>{eyebrow}</Eyebrow>
+        {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
         <div className={styles.headerRow}>
           <Heading size="display-sm" className={styles.heading}>
             {heading}

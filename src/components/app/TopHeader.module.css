@@ -150,3 +150,50 @@
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
+
+@media (max-width: 720px) {
+  .root {
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-lg);
+  }
+
+  /* Logo carries the brand on mobile; the divider + "Downtown · N Patios"
+   * text is too cramped to read at this width. */
+  .brand {
+    gap: 0;
+  }
+  .divider,
+  .region {
+    display: none;
+  }
+
+  /* Let the 7-day picker scroll horizontally instead of overflowing. */
+  .dates {
+    margin: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .dates::-webkit-scrollbar {
+    display: none;
+  }
+
+  .datePill {
+    min-width: 48px;
+    padding: 6px 10px;
+  }
+
+  .datePillTop {
+    font-size: 12px;
+  }
+  .datePillBottom {
+    font-size: 10px;
+  }
+
+  /* Weather chip is decorative — drop it to free up width. */
+  .right {
+    display: none;
+  }
+}

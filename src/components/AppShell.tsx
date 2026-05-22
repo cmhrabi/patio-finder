@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { MapRef } from 'react-map-gl/mapbox';
 import PatioMap from './PatioMap';
 import { VenuesLayer } from './VenuesLayer';
@@ -143,6 +143,22 @@ function parseSamples(samples: WireSunSample[]): SunSample[] {
 
 const HOVER_PREFETCH_DELAY_MS = 120;
 
+const MOBILE_QUERY = '(max-width: 720px)';
+
+function subscribeMobile(callback: () => void): () => void {
+  const mql = window.matchMedia(MOBILE_QUERY);
+  mql.addEventListener('change', callback);
+  return () => mql.removeEventListener('change', callback);
+}
+
+function getMobile(): boolean {
+  return window.matchMedia(MOBILE_QUERY).matches;
+}
+
+function getMobileServer(): boolean {
+  return false;
+}
+
 export default function AppShell() {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [seriesByPatio, setSeriesByPatio] = useState<Record<string, SunSample[]>>({});
@@ -157,6 +173,11 @@ export default function AppShell() {
   const [tab, setTab] = useState<RankingTab>('ranking');
   const [filters, setFilters] = useState<Filters>(() => emptyFilters());
   const [panelOpen, setPanelOpen] = useState(true);
+  // Track mobile viewport so we can switch the panels into a pill+modal pattern.
+  // On mobile, rankings default closed (pill visible); details auto-open when a
+  // venue is selected and can be dismissed back to a pill.
+  const isMobile = useSyncExternalStore(subscribeMobile, getMobile, getMobileServer);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [date, setDate] = useState<Date>(() => dayAnchorUTC(new Date()));
   /** Absolute scrub time, ms-since-epoch. Defaults to "now" on the selected day. */
   const [currentMs, setCurrentMs] = useState<number>(() => Date.now());
@@ -171,6 +192,24 @@ export default function AppShell() {
 
   const { favourites, toggle: toggleFavourite } = useFavourites();
   const mapRef = useRef<MapRef | null>(null);
+
+  // On mobile, default the rankings panel closed (pill visible). Only fires
+  // when the viewport flips into mobile — preserves user's open/closed choice
+  // otherwise.
+  useEffect(() => {
+    if (isMobile) setPanelOpen(false);
+  }, [isMobile]);
+
+  // On mobile, auto-open the details modal whenever a venue gets selected.
+  // Deselecting (activeVenueId → null) also clears the modal flag so it's ready
+  // to reopen on the next selection.
+  useEffect(() => {
+    if (!activeVenueId) {
+      setDetailsModalOpen(false);
+      return;
+    }
+    if (isMobile) setDetailsModalOpen(true);
+  }, [isMobile, activeVenueId]);
 
   // Hydrate venues from the DB. Also wipe the legacy localStorage cache from
   // the pre-DB DrawControl flow.
@@ -536,7 +575,11 @@ export default function AppShell() {
   );
 
   return (
-    <div className={styles.root} data-details-open={activeVenue ? 'true' : undefined}>
+    <div
+      className={styles.root}
+      data-details-open={activeVenue ? 'true' : undefined}
+      data-mobile={isMobile ? 'true' : undefined}
+    >
       <PatioMap
         ref={mapRef}
         initialViewState={DOWNTOWN_VIEW}
@@ -597,7 +640,7 @@ export default function AppShell() {
         </button>
       )}
 
-      {activeVenue ? (
+      {activeVenue && (!isMobile || detailsModalOpen) ? (
         <div className={styles.detailsSlot}>
           <VenueDetailsPanel
             venue={activeVenue}
@@ -607,11 +650,33 @@ export default function AppShell() {
             isFavourite={favourites.has(activeVenue.id)}
             onToggleFavourite={() => toggleFavourite(activeVenue.id)}
             onClose={() => {
+              if (isMobile) {
+                // Mobile: just close the sheet, keep the venue selected so the
+                // bottom pill stays available for re-open.
+                setDetailsModalOpen(false);
+                return;
+              }
               setActiveVenueId(null);
               flyToOverview();
             }}
           />
         </div>
+      ) : null}
+
+      {isMobile && activeVenue && !detailsModalOpen ? (
+        <button
+          type="button"
+          className={styles.detailsOpener}
+          onClick={() => setDetailsModalOpen(true)}
+          aria-label={`Show details for ${activeVenue.name}`}
+        >
+          <span className={styles.detailsOpenerName}>{activeVenue.name}</span>
+          {sunPctByVenue[activeVenue.id] != null ? (
+            <span className={styles.detailsOpenerPct}>
+              {Math.round(sunPctByVenue[activeVenue.id] ?? 0)}%
+            </span>
+          ) : null}
+        </button>
       ) : null}
 
       <div className={styles.timePillSlot}>

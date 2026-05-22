@@ -14,6 +14,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .links {
@@ -36,13 +37,20 @@
   color: var(--ink);
 }
 
-@media (max-width: 600px) {
+@media (max-width: 720px) {
   .root {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-3);
+    padding: var(--space-5) var(--space-4);
+  }
+  .brandLine {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
   }
   .links {
     gap: var(--space-4);
+    flex-wrap: wrap;
   }
 }

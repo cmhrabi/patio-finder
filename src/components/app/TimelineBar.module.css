@@ -137,3 +137,37 @@
   pointer-events: none;
   transition: box-shadow 160ms ease-out;
 }
+
+@media (max-width: 720px) {
+  .root {
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-3);
+    border-radius: var(--radius-lg);
+  }
+
+  .play {
+    width: 40px;
+    height: 40px;
+  }
+
+  /* The sunrise/sunset bookends eat width — drop their large numerals on
+   * mobile. The values stay in the time pill, so we don't lose information. */
+  .bookend {
+    display: none;
+  }
+
+  .track {
+    height: 44px;
+  }
+
+  /* Fatten the scrub thumb so it's draggable with a finger. */
+  .thumb {
+    width: 22px;
+    height: 22px;
+    border-width: 3px;
+  }
+
+  .tickLabel {
+    font-size: 10px;
+  }
+}

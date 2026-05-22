@@ -20,3 +20,11 @@
   letter-spacing: -0.02em;
   line-height: 1;
 }
+
+/* On phones the wordmark next to the mark eats the header's date strip /
+ * action width. Drop it — the mark alone reads as the brand at this size. */
+@media (max-width: 720px) {
+  .wordmark {
+    display: none;
+  }
+}
