@@ -1,6 +1,6 @@
 # Patio Finder
 
-A geospatial web app that helps Torontonians find patios with the most sunlight, plus the SunChaser design system that powers it. Both live in this repo.
+A geospatial web app that helps Torontonians find patios with the most sunlight, plus the Golden Hour design system that powers it. Both live in this repo.
 
 ## Stack
 

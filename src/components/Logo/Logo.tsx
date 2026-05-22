@@ -7,12 +7,12 @@ export type LogoProps = {
   /** Mark height in px. Default 28. The wordmark scales proportionally. */
   size?: number;
   variant?: LogoVariant;
-  /** Optional accessible label. Defaults to "SunChaser". Pass `""` to mark decorative. */
+  /** Optional accessible label. Defaults to "Golden Hour". Pass `""` to mark decorative. */
   title?: string;
 } & Omit<HTMLAttributes<HTMLSpanElement>, "title">;
 
 /**
- * SunChaser logo: a circle whose left half is filled (representing sun + shade),
+ * Golden Hour logo: a circle whose left half is filled (representing sun + shade),
  * surrounded by 8 rays at 45° intervals — the rays start outside the circle,
  * so the mark reads as a sun even at small sizes.
  *
@@ -20,7 +20,7 @@ export type LogoProps = {
  * surrounding theme.
  */
 export const Logo = forwardRef<HTMLSpanElement, LogoProps>(function Logo(
-  { size = 28, variant = "full", title = "SunChaser", className, ...rest },
+  { size = 28, variant = "full", title = "Golden Hour", className, ...rest },
   ref,
 ) {
   const decorative = title === "";
@@ -77,7 +77,7 @@ export const Logo = forwardRef<HTMLSpanElement, LogoProps>(function Logo(
       </svg>
       {variant === "full" ? (
         <span className={styles.wordmark} style={{ fontSize: size * 0.86 }}>
-          SunChaser
+          Golden Hour
         </span>
       ) : null}
     </span>

@@ -31,5 +31,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "sunchaser-design-system", "storybook-static"]
+  "exclude": ["node_modules", "golden-hour-design-system", "storybook-static"]
 }

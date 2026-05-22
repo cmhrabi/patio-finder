@@ -6,7 +6,7 @@ import { Logo } from "./Logo";
 describe("Logo", () => {
   it("renders an accessible name by default", () => {
     render(<Logo />);
-    expect(screen.getByRole("img", { name: "SunChaser" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Golden Hour" })).toBeInTheDocument();
   });
 
   it("renders 8 rays in the SVG mark", () => {
@@ -16,9 +16,9 @@ describe("Logo", () => {
 
   it("renders the wordmark in `full` variant only", () => {
     const { rerender } = render(<Logo variant="full" />);
-    expect(screen.getByText("SunChaser")).toBeInTheDocument();
+    expect(screen.getByText("Golden Hour")).toBeInTheDocument();
     rerender(<Logo variant="mark" />);
-    expect(screen.queryByText("SunChaser")).not.toBeInTheDocument();
+    expect(screen.queryByText("Golden Hour")).not.toBeInTheDocument();
   });
 
   it("has no a11y violations", async () => {

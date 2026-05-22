@@ -26,7 +26,7 @@ const preview: Preview = {
   globalTypes: {
     theme: {
       name: "Theme",
-      description: "SunChaser theme",
+      description: "Golden Hour theme",
       defaultValue: "cream",
       toolbar: {
         icon: "paintbrush",

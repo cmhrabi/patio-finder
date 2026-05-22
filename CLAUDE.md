@@ -40,7 +40,7 @@ App Router app with an in-tree design system:
 - `src/app/page.tsx` — server component; renders `<PatioMap />` inside a full-viewport `<main>`.
 - `src/components/PatioMap.tsx` — **client component** (`'use client'`). Mapbox GL via `react-map-gl/mapbox`. Initial view hard-coded to Toronto.
 
-**Design system (the SunChaser kit)**
+**Design system (the Golden Hour kit)**
 - `tokens.json` (repo root) — single source of truth for colour, spacing, radius, shadow, fonts, type ramp, theme variants, and card-style modifiers.
 - `scripts/generate-tokens.ts` — emits `src/tokens/tokens.css` (CSS variables + `[data-theme]` + `[data-card-style]` + `.type-*` utility classes) and `src/tokens/tokens.ts` (typed constants + `cssVar()` helper). Re-run with `npm run tokens:gen` whenever `tokens.json` changes.
 - `src/theme/` — `ThemeProvider` (sets `data-theme` and `data-card-style` on `<html>`) and `useTheme` hook.

@@ -24,7 +24,7 @@ export function Hero({ eyebrow, patioCount, callouts, stats }: Props) {
           Toronto&apos;s patios.
         </Heading>
         <p className={['type-body-lg', styles.lede].join(' ')}>
-          Real-time shadows, real-time patios. SunChaser tracks where the light is
+          Real-time shadows, real-time patios. Golden Hour tracks where the light is
           falling right now — so you know which pint to point yourself at.
         </p>
 

@@ -52,7 +52,7 @@ export function TopHeader({ patioCount, region = 'Downtown', selectedDate, onSel
   return (
     <header className={styles.root}>
       <div className={styles.brand}>
-        <Link href="/" className={styles.brandLink} aria-label="SunChaser — home">
+        <Link href="/" className={styles.brandLink} aria-label="Golden Hour — home">
           <Logo size={26} />
         </Link>
         <span className={styles.divider} aria-hidden="true" />

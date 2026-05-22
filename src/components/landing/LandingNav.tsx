@@ -13,7 +13,7 @@ const NAV_LINKS: Array<{ label: string; href: string }> = [
 export function LandingNav() {
   return (
     <header className={styles.root}>
-      <Link href="/" className={styles.brand} aria-label="SunChaser — home">
+      <Link href="/" className={styles.brand} aria-label="Golden Hour — home">
         <Logo size={26} />
       </Link>
 

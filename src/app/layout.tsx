@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SunChaser — Toronto patios in the sun",
+  title: "Golden Hour — Toronto patios in the sun",
   description: "Live sun-coverage rankings for Toronto patios. Find where to drink in the sun, right now.",
 };
 

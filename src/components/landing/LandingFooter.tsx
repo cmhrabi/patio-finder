@@ -6,7 +6,7 @@ export function LandingFooter() {
   return (
     <footer className={styles.root}>
       <span className={styles.brandLine}>
-        SunChaser · made for sunny Toronto
+        Golden Hour · made for sunny Toronto
       </span>
       <nav className={styles.links} aria-label="Footer">
         <Link href="https://github.com" target="_blank" rel="noreferrer noopener" className={styles.link}>

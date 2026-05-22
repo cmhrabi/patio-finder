@@ -10,7 +10,7 @@ export default mergeConfig(
       setupFiles: ["./tests/setup.ts"],
       css: { modules: { classNameStrategy: "non-scoped" } },
       include: ["src/**/*.{test,spec}.{ts,tsx}"],
-      exclude: ["node_modules", ".next", "storybook-static", "sunchaser-design-system"],
+      exclude: ["node_modules", ".next", "storybook-static", "golden-hour-design-system"],
     },
   }),
 );
