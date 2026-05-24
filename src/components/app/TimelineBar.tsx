@@ -176,7 +176,11 @@ export function TimelineBar({ sunrise, sunset, currentMs, onChange, onCommit, di
         >
           <div className={styles.gradient} aria-hidden="true" />
           {ticks.map((tk) => (
-            <span key={tk.label} className={styles.tickLabel} style={{ left: `${tk.t * 100}%` }}>
+            <span
+              key={tk.label}
+              className={styles.tickLabel}
+              style={{ left: `${tk.t * 100}%`, transform: `translateX(-${tk.t * 100}%)` }}
+            >
               {tk.label}
             </span>
           ))}

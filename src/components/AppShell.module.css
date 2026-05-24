@@ -4,7 +4,6 @@
   height: 100%;
   background: var(--map-bg);
   color: var(--map-text);
-  overflow: hidden;
 }
 
 .headerSlot {
@@ -23,11 +22,11 @@
 .panelSlot {
   position: absolute;
   /* Top: edge gap + measured header height + breathing-room margin.
-   * Bottom: edge gap + ~96px timeline height + same breathing-room margin.
+   * Bottom: edge gap + measured timeline height + same breathing-room margin.
    * Anchoring both edges (instead of capping max-height) means the panel always
    * fills the available middle of the screen and its body scrolls internally. */
   top: calc(var(--space-4) + var(--header-h, 76px) + var(--space-5));
-  bottom: calc(var(--space-4) + 96px + var(--space-5));
+  bottom: calc(var(--space-4) + var(--timeline-h, 96px) + var(--space-5));
   left: var(--space-4);
   z-index: 4;
   display: flex;
@@ -57,7 +56,7 @@
 
 .timePillSlot {
   position: absolute;
-  bottom: calc(var(--space-4) + 96px + var(--space-3));
+  bottom: calc(var(--space-4) + var(--timeline-h, 96px) + var(--space-3));
   left: 50%;
   transform: translateX(-50%);
   z-index: 3;
@@ -96,7 +95,7 @@
    * panel always fills the available middle of the right edge and scrolls
    * internally if the content overflows. */
   top: calc(var(--space-4) + var(--header-h, 76px) + var(--space-5));
-  bottom: calc(var(--space-4) + 96px + var(--space-5));
+  bottom: calc(var(--space-4) + var(--timeline-h, 96px) + var(--space-5));
   right: var(--space-4);
   z-index: 4;
   display: flex;
@@ -105,7 +104,7 @@
 .attributionSlot {
   position: absolute;
   right: var(--space-4);
-  bottom: calc(var(--space-4) + 96px + var(--space-3));
+  bottom: calc(var(--space-4) + var(--timeline-h, 96px) + var(--space-3));
   z-index: 4;
   pointer-events: none;
 }
@@ -119,7 +118,7 @@
 .detailsOpener {
   position: absolute;
   right: var(--space-4);
-  bottom: calc(var(--space-4) + 96px + var(--space-3));
+  bottom: calc(var(--space-4) + var(--timeline-h, 96px) + var(--space-3));
   z-index: 4;
   display: inline-flex;
   align-items: center;
@@ -186,12 +185,15 @@
     min-height: 44px;
   }
 
-  /* Time pill is squeezed between the timeline and the controls cluster;
-   * tighten its bottom anchor to follow the new timeline height. Add the
-   * safe-area inset so the pill clears Safari's URL bar and the home
-   * indicator. */
+  /* Time pill sits just above the timeline. Same pattern as the rankings pill
+   * (which keys off --header-h): we add the timeline's own bottom anchor +
+   * measured --timeline-h + a small gap so the pill always tracks the timeline
+   * regardless of label-row height or text-size bumps. */
   .timePillSlot {
-    bottom: calc(max(var(--space-3), env(safe-area-inset-bottom)) + 80px + var(--space-2));
+    bottom: calc(
+      max(var(--space-3), env(safe-area-inset-bottom)) + var(--space-3)
+        + var(--timeline-h, 100px) + var(--space-2)
+    );
   }
 
   .controlsSlot {
@@ -238,11 +240,17 @@
   .timelineSlot {
     left: max(var(--space-3), env(safe-area-inset-left));
     right: max(var(--space-3), env(safe-area-inset-right));
-    bottom: max(var(--space-3), env(safe-area-inset-bottom));
+    /* The map now uses `100lvh` (full-bleed behind the iOS Safari URL bar), so
+     * env(safe-area-inset-bottom) only clears the home indicator — not the
+     * URL bar. Add a small bump so the scrubber doesn't sit underneath it. */
+    bottom: calc(max(var(--space-3), env(safe-area-inset-bottom)) + var(--space-3));
   }
 
   .attributionSlot {
     right: max(var(--space-3), env(safe-area-inset-right));
-    bottom: calc(max(var(--space-3), env(safe-area-inset-bottom)) + 80px + var(--space-2));
+    bottom: calc(
+      max(var(--space-3), env(safe-area-inset-bottom)) + var(--space-3)
+        + var(--timeline-h, 100px) + var(--space-3)
+    );
   }
 }

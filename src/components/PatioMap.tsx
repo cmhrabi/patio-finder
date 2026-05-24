@@ -150,7 +150,7 @@ const PatioMap = forwardRef<MapRef, PatioMapProps>(function PatioMap(
       mapboxAccessToken={token}
       initialViewState={initialViewState ?? DEFAULT_VIEW}
       mapStyle={mapStyle ?? 'mapbox://styles/mapbox/standard'}
-      style={{ width: '100%', height: '100%' }}
+      style={{ width: '100%', height: '120%' }}
       attributionControl={false}
       onLoad={handleLoad}
       antialias

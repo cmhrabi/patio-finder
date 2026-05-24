@@ -194,6 +194,7 @@ export default function AppShell() {
   const { favourites, toggle: toggleFavourite } = useFavourites();
   const mapRef = useRef<MapRef | null>(null);
   const [headerSlotRef, headerH] = useElementHeight<HTMLDivElement>();
+  const [timelineSlotRef, timelineH] = useElementHeight<HTMLDivElement>();
 
   // On mobile, default the rankings panel closed (pill visible). Only fires
   // when the viewport flips into mobile — preserves user's open/closed choice
@@ -582,9 +583,10 @@ export default function AppShell() {
       data-details-open={activeVenue ? 'true' : undefined}
       data-mobile={isMobile ? 'true' : undefined}
       style={
-        headerH != null
-          ? ({ '--header-h': `${headerH}px` } as React.CSSProperties)
-          : undefined
+        {
+          ...(headerH != null ? { '--header-h': `${headerH}px` } : {}),
+          ...(timelineH != null ? { '--timeline-h': `${timelineH}px` } : {}),
+        } as React.CSSProperties
       }
     >
       <PatioMap
@@ -698,7 +700,7 @@ export default function AppShell() {
         />
       </div>
 
-      <div className={styles.timelineSlot}>
+      <div ref={timelineSlotRef} className={styles.timelineSlot}>
         <TimelineBar
           sunrise={sunrise}
           sunset={sunset}
