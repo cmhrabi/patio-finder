@@ -35,8 +35,6 @@
 
 .panelOpener {
   position: absolute;
-  top: calc(var(--space-4) + 76px + var(--space-5));
-  left: var(--space-4);
   z-index: 4;
   appearance: none;
   border: 1px solid var(--map-line);
@@ -157,9 +155,9 @@
 
 @media (max-width: 720px) {
   .headerSlot {
-    top: var(--space-3);
-    left: var(--space-3);
-    right: var(--space-3);
+    top: max(var(--space-3), env(safe-area-inset-top));
+    left: max(var(--space-3), env(safe-area-inset-left));
+    right: max(var(--space-3), env(safe-area-inset-right));
   }
 
   /* Rankings panel becomes a full-bleed sheet over the map. */
@@ -188,9 +186,11 @@
   }
 
   /* Time pill is squeezed between the timeline and the controls cluster;
-   * tighten its bottom anchor to follow the new timeline height. */
+   * tighten its bottom anchor to follow the new timeline height. Add the
+   * safe-area inset so the pill clears Safari's URL bar and the home
+   * indicator. */
   .timePillSlot {
-    bottom: calc(var(--space-3) + 80px + var(--space-2));
+    bottom: calc(max(var(--space-3), env(safe-area-inset-bottom)) + 80px + var(--space-2));
   }
 
   .controlsSlot {
@@ -235,13 +235,13 @@
   }
 
   .timelineSlot {
-    left: var(--space-3);
-    right: var(--space-3);
-    bottom: var(--space-3);
+    left: max(var(--space-3), env(safe-area-inset-left));
+    right: max(var(--space-3), env(safe-area-inset-right));
+    bottom: max(var(--space-3), env(safe-area-inset-bottom));
   }
 
   .attributionSlot {
-    right: var(--space-3);
-    bottom: calc(var(--space-3) + 80px + var(--space-2));
+    right: max(var(--space-3), env(safe-area-inset-right));
+    bottom: calc(max(var(--space-3), env(safe-area-inset-bottom)) + 80px + var(--space-2));
   }
 }

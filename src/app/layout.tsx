@@ -21,6 +21,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -32,9 +33,9 @@ export default function RootLayout({
     <html
       lang="en"
       data-theme="cream"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} antialiased`}
     >
-      <body className="h-full m-0">{children}</body>
+      <body className="m-0">{children}</body>
     </html>
   );
 }

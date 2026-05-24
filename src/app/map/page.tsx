@@ -2,7 +2,7 @@ import AppShell from '@/components/AppShell';
 
 export default function Home() {
   return (
-    <main className="h-screen w-screen">
+    <main style={{ width: '100dvw', height: '100dvh' }}>
       <AppShell />
     </main>
   );
