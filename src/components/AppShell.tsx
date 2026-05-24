@@ -17,6 +17,7 @@ import {
 } from './app/RankingPanel';
 import { VenueDetailsPanel } from './app/VenueDetailsPanel';
 import { useFavourites } from '@/hooks/useFavourites';
+import { useElementHeight } from '@/hooks/useElementHeight';
 import { clearLegacyPatioCache, fetchVenues } from '@/lib/patios/storage';
 import type { Venue } from '@/lib/patios/types';
 import { getDayTimes } from '@/lib/sun/sunPosition';
@@ -192,6 +193,7 @@ export default function AppShell() {
 
   const { favourites, toggle: toggleFavourite } = useFavourites();
   const mapRef = useRef<MapRef | null>(null);
+  const [headerSlotRef, headerH] = useElementHeight<HTMLDivElement>();
 
   // On mobile, default the rankings panel closed (pill visible). Only fires
   // when the viewport flips into mobile — preserves user's open/closed choice
@@ -579,6 +581,11 @@ export default function AppShell() {
       className={styles.root}
       data-details-open={activeVenue ? 'true' : undefined}
       data-mobile={isMobile ? 'true' : undefined}
+      style={
+        headerH != null
+          ? ({ '--header-h': `${headerH}px` } as React.CSSProperties)
+          : undefined
+      }
     >
       <PatioMap
         ref={mapRef}
@@ -603,7 +610,7 @@ export default function AppShell() {
         </div>
       </PatioMap>
 
-      <div className={styles.headerSlot}>
+      <div ref={headerSlotRef} className={styles.headerSlot}>
         <TopHeader
           patioCount={totalPatios}
           selectedDate={date}

@@ -22,11 +22,11 @@
 
 .panelSlot {
   position: absolute;
-  /* Top: edge gap + ~76px header height + breathing-room margin.
+  /* Top: edge gap + measured header height + breathing-room margin.
    * Bottom: edge gap + ~96px timeline height + same breathing-room margin.
    * Anchoring both edges (instead of capping max-height) means the panel always
    * fills the available middle of the screen and its body scrolls internally. */
-  top: calc(var(--space-4) + 76px + var(--space-5));
+  top: calc(var(--space-4) + var(--header-h, 76px) + var(--space-5));
   bottom: calc(var(--space-4) + 96px + var(--space-5));
   left: var(--space-4);
   z-index: 4;
@@ -74,7 +74,7 @@
 
 .controlsSlot {
   position: absolute;
-  top: calc(var(--space-4) + 76px + var(--space-5));
+  top: calc(var(--space-4) + var(--header-h, 76px) + var(--space-5));
   right: var(--space-4);
   z-index: 4;
   pointer-events: none;
@@ -95,7 +95,7 @@
   /* Match panelSlot: hugged between the date header and the timeline so the
    * panel always fills the available middle of the right edge and scrolls
    * internally if the content overflows. */
-  top: calc(var(--space-4) + 76px + var(--space-5));
+  top: calc(var(--space-4) + var(--header-h, 76px) + var(--space-5));
   bottom: calc(var(--space-4) + 96px + var(--space-5));
   right: var(--space-4);
   z-index: 4;
@@ -173,11 +173,12 @@
   }
 
   /* Rankings pill — sits just under the compact mobile header. The
-   * date-pill row is the tallest element in the header (~56px). Bump
-   * z-index above the header so the pill is never clipped if the header
-   * grows a row taller (e.g. system text-size bumps). */
+   * top offset tracks the measured header height (--header-h), so the
+   * pill always clears the header regardless of date-pill wrapping,
+   * locale length, or system text-size bumps. The 56px fallback covers
+   * SSR / first paint before the ResizeObserver fires. */
   .panelOpener {
-    top: calc(var(--space-3) + 56px + var(--space-3));
+    top: calc(var(--space-3) + var(--header-h, 56px) + var(--space-3));
     left: var(--space-3);
     z-index: 6;
     padding: 12px 18px;
@@ -194,7 +195,7 @@
   }
 
   .controlsSlot {
-    top: calc(var(--space-3) + 56px + var(--space-3));
+    top: calc(var(--space-3) + var(--header-h, 56px) + var(--space-3));
     right: var(--space-3);
     z-index: 6;
   }
@@ -219,7 +220,7 @@
   /* Details opener pill — top-right, parallel to the rankings pill on the
    * left. Both sit just below the header so they're easy to spot. */
   .detailsOpener {
-    top: calc(var(--space-3) + 56px + var(--space-3));
+    top: calc(var(--space-3) + var(--header-h, 56px) + var(--space-3));
     right: var(--space-3);
     bottom: auto;
     min-height: 44px;
@@ -231,7 +232,7 @@
   }
   /* Push the zoom/recenter cluster below the venue pill so they don't stack. */
   .root[data-mobile='true'][data-details-open='true'] .controlsSlot {
-    top: calc(var(--space-3) + 56px + var(--space-3) + 44px + var(--space-2));
+    top: calc(var(--space-3) + var(--header-h, 56px) + var(--space-3) + 44px + var(--space-2));
   }
 
   .timelineSlot {
