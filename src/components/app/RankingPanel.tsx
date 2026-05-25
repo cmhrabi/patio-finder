@@ -181,7 +181,7 @@ function ListTab({
   onToggleFavourite: (id: string) => void;
   onClose?: () => void;
 }) {
-  let eyebrow: string | null = null;
+  let eyebrow: string | null = "The most sunny patios";
   let heading = `Ranked at ${timeLabel}`;
   let emptyMessage = 'No venues match yet.';
   if (tab === 'all') {
