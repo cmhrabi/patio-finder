@@ -75,11 +75,17 @@ function resolvePhotoUrl(path: string, supabase: SupabaseClient): string {
 }
 
 /**
- * Bare list of patios with their polygons — the shape the sun-batch cron needs
- * to recompute coverage. Skips rows with missing or non-Polygon geometry.
+ * Bare list of patios with their polygons — the shape the sun-batch pipeline
+ * needs to recompute coverage. Skips rows with missing or non-Polygon geometry.
+ *
+ * Pass a client explicitly (e.g. the secret-key admin client) when running
+ * outside a request context, such as a background workflow step where the
+ * cookie-based server client has no cookies to read.
  */
-export async function listPatiosFromDb(): Promise<Array<{ id: string; polygon: GeoJSON.Polygon }>> {
-  const supabase = await createSupabaseServerClient();
+export async function listPatiosFromDb(
+  client?: SupabaseClient,
+): Promise<Array<{ id: string; polygon: GeoJSON.Polygon }>> {
+  const supabase = client ?? (await createSupabaseServerClient());
   const { data, error } = await supabase
     .from('patios_geo')
     .select('id, area_geojson')

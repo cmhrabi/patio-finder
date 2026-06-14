@@ -4,6 +4,14 @@
  *
  * Requires CRON_SECRET in .env.local and the dev server running on port 3000.
  *   $ npm run sun:rebuild
+ *
+ * Default hits incremental mode (drops yesterday, appends the new 7th day). To
+ * force a full wipe-and-rebuild of all 7 days, point at the ?mode=full URL:
+ *   $ SUN_BATCH_URL='http://localhost:3000/api/cron/sun-batch?mode=full' npm run sun:rebuild
+ *
+ * NOTE: the route now starts a Vercel Workflow and returns immediately with a
+ * `{ runId }` rather than waiting for the rebuild to finish. Track progress in
+ * the Vercel dashboard (Observability → Workflows) or the local dev logs.
  */
 
 const SECRET = process.env.CRON_SECRET

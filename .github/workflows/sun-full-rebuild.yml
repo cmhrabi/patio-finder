@@ -1,0 +1,39 @@
+name: Sun full rebuild
+
+# Fires a full wipe-and-recompute of patio_sun_series against the deployed
+# Vercel endpoint. Use this (rather than waiting for the nightly incremental
+# cron) whenever the sun pipeline or patio set changes, since incremental runs
+# leave the 6 middle days untouched.
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - 'src/app/api/cron/sun-batch/**'
+      - 'src/lib/sun/**'
+      - 'src/lib/buildings/**'
+      - 'src/lib/patios/**'
+      - 'vercel.json'
+
+# Don't let two pushes (or a push + manual run) overlap.
+concurrency:
+  group: sun-full-rebuild
+  cancel-in-progress: false
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger full rebuild
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SUN_BATCH_BASE_URL: ${{ vars.SUN_BATCH_BASE_URL }}
+        run: |
+          if [ -z "$CRON_SECRET" ] || [ -z "$SUN_BATCH_BASE_URL" ]; then
+            echo "Missing CRON_SECRET secret or SUN_BATCH_BASE_URL variable" >&2
+            exit 1
+          fi
+          curl -fsS -X GET \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            --max-time 600 \
+            "$SUN_BATCH_BASE_URL/api/cron/sun-batch?mode=full"

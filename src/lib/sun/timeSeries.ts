@@ -75,13 +75,13 @@ export function computeSeries(args: ComputeSeriesArgs): SunSample[] {
     frame.ringToMetres(r as Ring),
   );
 
-  // Pre-project all buildings within a generous absolute cap. The per-step
-  // filter below (`b.distM <= b.heightM / tan(alt) + PATIO_RADIUS_M`) is what
-  // actually decides relevance per timestep; this cap just bounds the upfront
-  // projection cost. 2 km is enough for a 100 m building at the 3° altitude
-  // floor (~1.9 km shadow) — anything taller/farther is rare in this dataset
-  // and gets caught by the per-step filter.
-  const ABSOLUTE_MAX_M = 300;
+  // Pre-project all buildings within an absolute cap. The per-step filter below
+  // (`b.distM <= b.heightM / tan(alt) + PATIO_RADIUS_M`) is what actually decides
+  // relevance per timestep; this cap bounds both the upfront projection cost and
+  // the universe the per-step filter draws from. Kept at 200 m to keep the batch
+  // tractable — buildings farther than this contribute shadows only at very low
+  // sun altitudes, which we already floor out via ALT_MIN_DEG.
+  const ABSOLUTE_MAX_M = 200;
   const snap = (v: number) => Math.round(v * 1000) / 1000;
 
   const projectedAll: (ProjectedBuilding & { distM: number })[] = [];
