@@ -1,19 +1,14 @@
 name: Sun full rebuild
 
-# Fires a full wipe-and-recompute of patio_sun_series against the deployed
-# Vercel endpoint. Use this (rather than waiting for the nightly incremental
+# Manually fires a full wipe-and-recompute of patio_sun_series against the
+# deployed Vercel endpoint.
+#
+# Manual dispatch only. Run this (rather than waiting for the nightly incremental
 # cron) whenever the sun pipeline or patio set changes, since incremental runs
-# leave the 6 middle days untouched.
+# leave the 6 middle days untouched. Trigger it from the Actions tab once the new
+# code is live on Vercel — otherwise the rebuild hits the still-deployed OLD code.
 on:
   workflow_dispatch: {}
-  push:
-    branches: [main]
-    paths:
-      - 'src/app/api/cron/sun-batch/**'
-      - 'src/lib/sun/**'
-      - 'src/lib/buildings/**'
-      - 'src/lib/patios/**'
-      - 'vercel.json'
 
 # Don't let two pushes (or a push + manual run) overlap.
 concurrency:
@@ -33,7 +28,21 @@ jobs:
             echo "Missing CRON_SECRET secret or SUN_BATCH_BASE_URL variable" >&2
             exit 1
           fi
-          curl -fsS -X GET \
+          # Strip any trailing slash so we never build a //api double-slash URL,
+          # which Vercel answers with a 308 redirect (the endpoint never runs).
+          base="${SUN_BATCH_BASE_URL%/}"
+          # --fail-with-body: surface 4xx/5xx bodies. No -L on purpose: a redirect
+          # here means a misconfigured base URL, so we want it to fail loudly.
+          status=$(curl -sS -X GET \
             -H "Authorization: Bearer $CRON_SECRET" \
             --max-time 600 \
-            "$SUN_BATCH_BASE_URL/api/cron/sun-batch?mode=full"
+            -o /tmp/sun-batch-response \
+            -w '%{http_code}' \
+            "$base/api/cron/sun-batch?mode=full")
+          echo "HTTP $status"
+          cat /tmp/sun-batch-response
+          echo
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "Rebuild trigger failed (HTTP $status)" >&2
+            exit 1
+          fi

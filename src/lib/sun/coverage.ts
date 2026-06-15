@@ -175,25 +175,32 @@ export function computeCoverage(
   if (patioArea <= 0) return { sunFraction: 1, shadowOnPatio: null };
   if (altitudeDeg <= 0) return { sunFraction: 0, shadowOnPatio: [patio] };
 
-  const shadows: PCMultiPolygon[] = [];
+  // Clip each building's shadow to the patio *before* unioning. Since
+  //   patio ∩ (S₁ ∪ S₂ ∪ …) = (patio ∩ S₁) ∪ (patio ∩ S₂) ∪ …
+  // this is mathematically identical to unioning the full shadows and
+  // intersecting once, but far cheaper at scale: the (many) buildings whose
+  // shadow misses the patio at this timestep drop out immediately, and every
+  // polygon fed into safeUnion is now bounded by the (small) patio rather than
+  // a sprawling shadow. That collapses the dominant polygon-clipping cost and
+  // is what keeps each computePatioDay step well under the function ceiling.
+  const patioPC = patio as unknown as PCPolygon;
+  const clippedShadows: PCMultiPolygon[] = [];
   for (const b of buildings) {
     const sh = buildShadow(b.footprint, b.heightM, azimuthDeg, altitudeDeg);
-    if (sh.length > 0) shadows.push(sh as unknown as PCMultiPolygon);
+    if (sh.length === 0) continue;
+    try {
+      const onPatio = polygonClipping.intersection(patioPC, sh as unknown as PCMultiPolygon);
+      // Drop shadows that don't reach the patio; keep only the part that does.
+      if (onPatio.length > 0) clippedShadows.push(onPatio);
+    } catch {
+      // Skip a shadow that fails to clip — at worst a slight underestimate of
+      // shade, consistent with safeUnion's drop-the-offender policy below.
+    }
   }
-  if (shadows.length === 0) return { sunFraction: 1, shadowOnPatio: null };
+  if (clippedShadows.length === 0) return { sunFraction: 1, shadowOnPatio: null };
 
-  const merged = safeUnion(shadows);
-  if (!merged || merged.length === 0) return { sunFraction: 1, shadowOnPatio: null };
-
-  let overlap: PCMultiPolygon = [];
-  try {
-    overlap = polygonClipping.intersection(
-      patio as unknown as PCPolygon,
-      merged,
-    );
-  } catch {
-    return { sunFraction: 1, shadowOnPatio: null };
-  }
+  // All pieces already live inside the patio, so their union *is* the overlap.
+  const overlap = safeUnion(clippedShadows);
   if (!overlap || overlap.length === 0) return { sunFraction: 1, shadowOnPatio: null };
 
   const overlapMp = overlap as unknown as MetricMultiPolygon;
