@@ -15,6 +15,7 @@ import { TextField } from '@/components/TextField'
 import { Toggle } from '@/components/Toggle'
 import { Heading } from '@/components/Heading'
 import { Stack } from '@/components/layout'
+import { signOut } from './actions'
 
 export type VenueGeo = {
   id: string
@@ -330,9 +331,16 @@ export default function AdminWorkspace({
       >
         <Stack gap="5">
           <div>
-            <Heading size="display-sm" as="h1">
-              Add a patio
-            </Heading>
+            <div className="flex items-start justify-between" style={{ gap: 'var(--space-3)' }}>
+              <Heading size="display-sm" as="h1">
+                Add a patio
+              </Heading>
+              <form action={signOut}>
+                <Button type="submit" variant="ghost" size="sm">
+                  Sign out
+                </Button>
+              </form>
+            </div>
             <p
               className="type-body-sm"
               style={{ color: 'var(--theme-text-mute)', marginTop: 'var(--space-1)' }}
