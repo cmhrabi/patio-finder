@@ -46,25 +46,6 @@
   flex: 0 0 auto;
 }
 
-.signIn {
-  appearance: none;
-  background: transparent;
-  border: 1px solid var(--hairline);
-  color: var(--ink);
-  font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: 500;
-  padding: 8px 18px;
-  border-radius: var(--radius-pill);
-  cursor: pointer;
-  transition: background-color 160ms ease-out, border-color 160ms ease-out;
-}
-
-.signIn:hover {
-  background: rgba(26, 35, 50, 0.04);
-  border-color: var(--ink-mute);
-}
-
 .cta {
   display: inline-flex;
   align-items: center;
@@ -123,9 +104,6 @@
     padding: var(--space-4) var(--space-4);
   }
   .links {
-    display: none;
-  }
-  .signIn {
     display: none;
   }
   .menuButton {
@@ -215,22 +193,6 @@
   .drawerLink:focus-visible {
     background: rgba(26, 35, 50, 0.04);
     outline: none;
-  }
-  .drawerSignIn {
-    appearance: none;
-    background: transparent;
-    border: 1px solid var(--hairline);
-    color: var(--ink);
-    font-family: var(--font-body);
-    font-size: 15px;
-    font-weight: 500;
-    padding: 12px var(--space-3);
-    margin: var(--space-2) var(--space-2) 0;
-    border-radius: var(--radius-pill);
-    cursor: pointer;
-  }
-  .drawerSignIn:hover {
-    background: rgba(26, 35, 50, 0.04);
   }
 }
 

@@ -40,9 +40,6 @@ export function LandingNav() {
       </nav>
 
       <div className={styles.actions}>
-        <button type="button" className={styles.signIn}>
-          Sign in
-        </button>
         <Link href="/map" className={styles.cta}>
           Open map
           <ArrowRight size={14} aria-hidden="true" />
@@ -91,13 +88,6 @@ export function LandingNav() {
                 </Link>
               ))}
             </nav>
-            <button
-              type="button"
-              className={styles.drawerSignIn}
-              onClick={() => setMenuOpen(false)}
-            >
-              Sign in
-            </button>
           </div>
         </>
       ) : null}
