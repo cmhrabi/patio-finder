@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
+import { requireUser } from '@/lib/supabase/auth'
 
 type Body = {
   name?: unknown
@@ -38,6 +39,10 @@ const optBool = (v: unknown) => (typeof v === 'boolean' ? v : false)
 const optInt = (v: unknown) => (isFiniteNum(v) ? Math.trunc(v) : null)
 
 export async function POST(req: NextRequest) {
+  if (!(await requireUser())) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+
   let body: Body
   try {
     body = (await req.json()) as Body
