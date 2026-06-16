@@ -46,7 +46,7 @@ type Mode =
       polygon: GeoJSON.Polygon
     }
 
-const TORONTO_VIEW = { longitude: -79.3832, latitude: 43.6532, zoom: 12 }
+const TORONTO_VIEW = { longitude: -79.3832, latitude: 43.655, zoom: 11.6 }
 
 type VenueFormState = {
   name: string

@@ -25,12 +25,12 @@ import type { LngLat, SunSample } from '@/lib/sun/types';
 import type { SunSeriesResponse, WireSunSample } from '@/app/api/sun-series/route';
 import styles from './AppShell.module.css';
 
-// Centred on Trinity Bellwoods/Ossington — fits the cluster of seed patios.
-// Flat top-down framing while no patio is selected; tilts on selection.
+// Pulled back to frame most of Toronto (core + North York/Etobicoke/Scarborough)
+// while no patio is selected; tilts and zooms in on selection.
 const DOWNTOWN_VIEW = {
-  longitude: -79.4185,
-  latitude: 43.6515,
-  zoom: 13.6,
+  longitude: -79.3832,
+  latitude: 43.655,
+  zoom: 11.6,
   pitch: 0,
   bearing: 0,
 };
@@ -110,7 +110,9 @@ function setSameTimeOfDay(day: Date, time: Date): Date {
   return new Date(torontoMidnightUtc.getTime() + offset);
 }
 
-const REPRESENTATIVE_POINT: LngLat = [DOWNTOWN_VIEW.longitude, DOWNTOWN_VIEW.latitude];
+// Downtown reference point for city-wide sun calculations — kept fixed on the
+// core, independent of the (now zoomed-out) initial map framing.
+const REPRESENTATIVE_POINT: LngLat = [-79.4185, 43.6515];
 
 const ymdFmt = new Intl.DateTimeFormat('en-CA', {
   timeZone: TZ,
