@@ -191,40 +191,6 @@
   letter-spacing: 0.02em;
 }
 
-.tapList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.tapItem {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--map-line);
-}
-
-.tapItem:last-child {
-  border-bottom: 0;
-}
-
-.tapName {
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--map-text);
-}
-
-.tapBrewery {
-  font-family: var(--font-body);
-  font-size: 13px;
-  color: var(--map-text-mute);
-}
-
 .cta {
   appearance: none;
   display: inline-flex;
@@ -298,10 +264,6 @@
 
   .hours {
     font-size: 15px;
-  }
-
-  .tapItem {
-    padding: var(--space-3) 0;
   }
 
   .cta {

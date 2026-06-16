@@ -9,6 +9,7 @@ type Body = {
   website?: unknown
   phone?: unknown
   description?: unknown
+  photo?: unknown
   lng?: unknown
   lat?: unknown
   dog_friendly?: unknown
@@ -96,7 +97,18 @@ export async function POST(req: NextRequest) {
       .select('id, slug, name')
       .single()
 
-    if (!error && data) return NextResponse.json(data, { status: 201 })
+    if (!error && data) {
+      const photo = optString(body.photo)
+      if (photo) {
+        // storage_path is overloaded: an absolute URL is used as-is by resolvePhotoUrl.
+        // Non-fatal — the venue already exists, so don't fail the request if this errors.
+        const { error: photoErr } = await supabase
+          .from('venue_photos')
+          .insert({ venue_id: data.id, storage_path: photo, sort_order: 0 })
+        if (photoErr) console.error('venue_photos insert failed:', photoErr.message)
+      }
+      return NextResponse.json(data, { status: 201 })
+    }
     // 23505 = unique_violation — retry with suffix
     if (error?.code !== '23505') {
       return NextResponse.json({ error: error?.message ?? 'insert failed' }, { status: 500 })

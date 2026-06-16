@@ -33,18 +33,6 @@ function formatTodayHours(hours: Venue['hours']): string | null {
   return slots.map(([open, close]) => `${open} – ${close}`).join(', ');
 }
 
-// Placeholder until the `taps` table is wired through to the frontend. The
-// current shape mirrors the DB columns so swapping in real data later is a
-// drop-in change.
-type MockTap = { name: string; brewery: string };
-const MOCK_TAPS: MockTap[] = [
-  { name: 'Witchshark IPA', brewery: 'Bellwoods' },
-  { name: 'Shumei Pilsner', brewery: 'Blood Brothers' },
-  { name: 'Otsukaresama Lager', brewery: 'Godspeed' },
-  { name: 'Saison', brewery: 'Burdock' },
-  { name: 'Guinness', brewery: 'Guinness' },
-];
-
 type Props = {
   venue: Venue;
   /** 0..100, best patio's sun% at the active scrub time. */
@@ -195,18 +183,6 @@ export function VenueDetailsPanel({
             <p className={styles.hours}>{hoursToday}</p>
           </div>
         ) : null}
-
-        <div className={styles.section}>
-          <Eyebrow>On tap</Eyebrow>
-          <ul className={styles.tapList}>
-            {MOCK_TAPS.map((t) => (
-              <li key={`${t.name}-${t.brewery}`} className={styles.tapItem}>
-                <span className={styles.tapName}>{t.name}</span>
-                <span className={styles.tapBrewery}>{t.brewery}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
 
         <a
           href={directionsHref}

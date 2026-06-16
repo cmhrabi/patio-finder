@@ -54,6 +54,7 @@ type VenueFormState = {
   neighborhood: string
   website: string
   description: string
+  photo: string
   dog_friendly: boolean
   heated: boolean
   covered: boolean
@@ -67,6 +68,7 @@ const emptyVenue: VenueFormState = {
   neighborhood: '',
   website: '',
   description: '',
+  photo: '',
   dog_friendly: false,
   heated: false,
   covered: false,
@@ -461,6 +463,13 @@ export default function AdminWorkspace({
                 onChange={(e) =>
                   setVenueForm({ ...venueForm, description: e.target.value })
                 }
+              />
+              <TextField
+                label="Photo URL"
+                type="url"
+                placeholder="https://…"
+                value={venueForm.photo}
+                onChange={(e) => setVenueForm({ ...venueForm, photo: e.target.value })}
               />
               <Stack gap="2">
                 <Toggle
