@@ -1,14 +1,27 @@
-name: Sun full rebuild
+name: Sun rebuild
 
-# Manually fires a full wipe-and-recompute of patio_sun_series against the
-# deployed Vercel endpoint.
+# Manually fires a sun-batch run against the deployed Vercel endpoint.
 #
 # Manual dispatch only. Run this (rather than waiting for the nightly incremental
 # cron) whenever the sun pipeline or patio set changes, since incremental runs
 # leave the 6 middle days untouched. Trigger it from the Actions tab once the new
 # code is live on Vercel — otherwise the rebuild hits the still-deployed OLD code.
+#
+# Pick the mode from the dropdown:
+#   missing     — compute only patios that have no rows yet (e.g. after adding a venue)
+#   full        — wipe & recompute the whole table for every patio
+#   incremental — drop yesterday and append the new 7th day
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'missing = only uncalculated patios; full = wipe & recompute everything; incremental = drop yesterday + add day 7'
+        type: choice
+        default: missing
+        options:
+          - missing
+          - full
+          - incremental
 
 # Don't let two pushes (or a push + manual run) overlap.
 concurrency:
@@ -19,7 +32,7 @@ jobs:
   rebuild:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger full rebuild
+      - name: Trigger rebuild
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           SUN_BATCH_BASE_URL: ${{ vars.SUN_BATCH_BASE_URL }}
@@ -38,7 +51,7 @@ jobs:
             --max-time 600 \
             -o /tmp/sun-batch-response \
             -w '%{http_code}' \
-            "$base/api/cron/sun-batch?mode=full")
+            "$base/api/cron/sun-batch?mode=${{ inputs.mode }}")
           echo "HTTP $status"
           cat /tmp/sun-batch-response
           echo

@@ -17,7 +17,7 @@ import { lookaheadYmds, noonishUtcForYmd, yesterdayYmd } from '@/lib/sun/dates'
 
 const INSERT_CHUNK = 1000
 
-type Mode = 'full' | 'incremental'
+type Mode = 'full' | 'incremental' | 'missing'
 
 type Row = {
   patio_id: string
@@ -70,7 +70,7 @@ async function planRun(mode: Mode): Promise<RunPlan> {
   const ymds = lookaheadYmds(now)
 
   let full = mode === 'full'
-  if (!full) {
+  if (mode === 'incremental') {
     // If the table doesn't already cover today, the window is empty or stale
     // (fresh deploy, post-wipe, rolled past) and an incremental run would leave
     // gaps. Promote to a full rebuild instead.
@@ -87,6 +87,21 @@ async function planRun(mode: Mode): Promise<RunPlan> {
 
   const patios = await listPatiosFromDb(supabase)
   if (patios.length === 0) throw new Error('no patios in DB')
+
+  if (mode === 'missing') {
+    // Compute the full window for patios that have no rows yet (e.g. freshly
+    // added venues), and leave every already-computed patio untouched. A patio
+    // that's fully in the system has rows for today; a new one has none.
+    const { data, error } = await supabase
+      .from('patio_sun_series')
+      .select('patio_id')
+      .eq('local_date', ymds[0])
+    if (error) throw new Error(`missing-scan failed: ${error.message}`)
+    const covered = new Set((data ?? []).map(r => r.patio_id))
+    const missingPatios = patios.filter(p => !covered.has(p.id))
+    console.log(`[sun-batch] missing mode — ${missingPatios.length} uncalculated patio(s)`)
+    return { mode: 'missing', wipe: false, deleteDates: [], computeDates: ymds, patios: missingPatios }
+  }
 
   if (full) {
     return { mode: 'full', wipe: true, deleteDates: [], computeDates: ymds, patios }

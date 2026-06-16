@@ -24,8 +24,8 @@ export type PatioMapProps = {
 
 const DEFAULT_VIEW = {
   longitude: -79.3832,
-  latitude: 43.6532,
-  zoom: 12,
+  latitude: 43.7,
+  zoom: 10.3,
 };
 
 const PatioMap = forwardRef<MapRef, PatioMapProps>(function PatioMap(
