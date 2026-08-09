@@ -12,8 +12,7 @@ export function LandingFooter() {
         <Link href="https://github.com" target="_blank" rel="noreferrer noopener" className={styles.link}>
           GitHub <ArrowUpRight size={12} aria-hidden="true" />
         </Link>
-        <Link href="#" className={styles.link}>Patio data</Link>
-        <Link href="#" className={styles.link}>Privacy</Link>
+        <Link href="/privacy" className={styles.link}>Privacy</Link>
       </nav>
     </footer>
   );

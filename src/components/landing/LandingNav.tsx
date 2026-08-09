@@ -8,9 +8,7 @@ import styles from './LandingNav.module.css';
 
 const NAV_LINKS: Array<{ label: string; href: string }> = [
   { label: 'Map', href: '/map' },
-  { label: 'Patios', href: '#' },
-  { label: 'Favourites', href: '#' },
-  { label: 'About', href: '#' },
+  { label: 'Patios', href: '/#brightest-six' },
 ];
 
 export function LandingNav() {

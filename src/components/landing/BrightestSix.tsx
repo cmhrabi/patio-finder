@@ -14,7 +14,7 @@ type Props = {
 
 export function BrightestSix({ venues }: Props) {
   return (
-    <section className={styles.root}>
+    <section id="brightest-six" className={styles.root}>
       <header className={styles.header}>
         <div className={styles.headerCopy}>
           <Eyebrow accent>Sunny right now</Eyebrow>
