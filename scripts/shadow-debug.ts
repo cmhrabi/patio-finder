@@ -8,19 +8,19 @@
  *
  * Default time is 2026-05-22T22:00:00Z (6pm EDT, mid-May Toronto).
  * Reads patios from Supabase (needs .env.local with NEXT_PUBLIC_SUPABASE_URL
- * and SUPABASE_SECRET_KEY) and buildings from public/buildings.geojson.
+ * and SUPABASE_SECRET_KEY) and buildings from the tiled dataset in Supabase
+ * Storage.
  *
  * Uses the same primitives as the live pipeline (shadows.ts, coverage.ts,
  * sunPosition.ts) so the numbers it prints match what the app computes.
  */
 
-import { readFile } from 'node:fs/promises'
-import path from 'node:path'
 import { createClient } from '@supabase/supabase-js'
 import polygonClipping, {
   type MultiPolygon as PCMultiPolygon,
   type Polygon as PCPolygon,
 } from 'polygon-clipping'
+import { loadBuildingsNear } from '@/lib/buildings/loadNear'
 import { makeFrame } from '@/lib/sun/projection'
 import { getSunPosition } from '@/lib/sun/sunPosition'
 import { buildShadow } from '@/lib/sun/shadows'
@@ -116,36 +116,19 @@ async function loadPatiosAndVenues(): Promise<{
   return { patios }
 }
 
-type BuildingExt = Building & { idx: number; sourceProps: Record<string, unknown> }
+type BuildingExt = Building & { idx: number }
 
-async function loadBuildings(): Promise<BuildingExt[]> {
-  const fp = path.join(process.cwd(), 'public', 'buildings.geojson')
-  const raw = await readFile(fp, 'utf8')
-  const fc = JSON.parse(raw) as GeoJSON.FeatureCollection
-  const out: BuildingExt[] = []
-  let idx = 0
-  for (const f of fc.features) {
-    const props = (f.properties ?? {}) as Record<string, unknown>
-    const heightM = Number(props.heightM ?? 0)
-    if (!isFinite(heightM) || heightM <= 0) continue
-    const heightSource = (props.heightSource as 'avg' | 'max' | undefined) ?? undefined
-    const meta = {
-      heightSource,
-      minH: typeof props.minH === 'number' ? props.minH : undefined,
-      maxH: typeof props.maxH === 'number' ? props.maxH : undefined,
-      avgH: typeof props.avgH === 'number' ? props.avgH : undefined,
-    }
-    const g = f.geometry
-    if (!g) continue
-    if (g.type === 'Polygon') {
-      out.push({ idx: idx++, footprint: g.coordinates, heightM, ...meta, sourceProps: props })
-    } else if (g.type === 'MultiPolygon') {
-      for (const poly of g.coordinates) {
-        out.push({ idx: idx++, footprint: poly, heightM, ...meta, sourceProps: props })
-      }
-    }
-  }
-  return out
+/**
+ * Pull buildings around the patio from the tiled dataset in Supabase Storage —
+ * the same source and loader the live pipeline uses, so the numbers printed here
+ * keep matching what the app computes.
+ */
+async function loadBuildings(
+  centre: [number, number],
+  radiusM: number,
+): Promise<BuildingExt[]> {
+  const buildings = await loadBuildingsNear(centre, radiusM)
+  return buildings.map((b, idx) => ({ ...b, idx }))
 }
 
 function bearingDeg(dx: number, dy: number): number {
@@ -242,8 +225,6 @@ async function main() {
     return
   }
 
-  const buildings = await loadBuildings()
-
   // Project buildings into metric frame. Filter by per-building shadow reach so
   // we don't try to clip 50,000 polygons.
   const altRad = (altitudeDeg * Math.PI) / 180
@@ -266,6 +247,18 @@ async function main() {
   const maxKeepM = HEIGHT_CAP / tanAlt + PATIO_RADIUS_M
   const dLat = maxKeepM / 111_000
   const dLon = maxKeepM / (111_000 * Math.cos((lat0 * Math.PI) / 180))
+
+  // Near sunrise/sunset maxKeepM runs to tens of km, which would pull thousands
+  // of tiles for shadows that barely register. Cap the fetch; the bbox filter
+  // below still applies the true reach to whatever we loaded.
+  const FETCH_CAP_M = 5_000
+  const fetchRadiusM = Math.min(maxKeepM, FETCH_CAP_M)
+  if (maxKeepM > FETCH_CAP_M) {
+    console.log(
+      `  (sun is low: shadow reach ${maxKeepM.toFixed(0)} m, fetching ${FETCH_CAP_M} m of buildings)`,
+    )
+  }
+  const buildings = await loadBuildings(origin, fetchRadiusM)
 
   const projected: Projected[] = []
   for (const b of buildings) {

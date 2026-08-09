@@ -40,6 +40,9 @@ yarn-error.log*
 # data prep cache
 /scripts/.cache/
 
+# buildings data lives in Supabase Storage (see scripts/README.md), not the repo
+/public/buildings.geojson
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

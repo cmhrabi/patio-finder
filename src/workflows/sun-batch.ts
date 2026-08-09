@@ -10,7 +10,7 @@
  */
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { listPatiosFromDb } from '@/lib/patios/db'
-import { loadStaticBuildings } from '@/lib/buildings/loadStatic'
+import { loadBuildingsNear } from '@/lib/buildings/loadNear'
 import { filterBuildingsNear } from '@/lib/buildings/filterNear'
 import { computeSeries } from '@/lib/sun/timeSeries'
 import { lookaheadYmds, noonishUtcForYmd, yesterdayYmd } from '@/lib/sun/dates'
@@ -152,8 +152,23 @@ async function computePatioDay(
 ): Promise<number> {
   'use step'
   const supabase = createSupabaseAdminClient()
-  const allBuildings = await loadStaticBuildings()
-  const buildings = filterBuildingsNear(allBuildings, polygonCentroid(polygon))
+  const centre = polygonCentroid(polygon)
+  // Tiles are a coarse (0.01°) prefilter; filterBuildingsNear still does the
+  // precise 300 m cull that keeps this a strict superset of computeSeries's
+  // 200 m pass.
+  const buildings = filterBuildingsNear(await loadBuildingsNear(centre), centre)
+
+  // A patio in dense Toronto with nothing within 300 m means the dataset failed
+  // us, not that the patio is unobstructed — a truncated tile, a stale manifest,
+  // or a gap in coverage. Writing sun_fraction 1.0 here is how three east-end
+  // patios ended up advertised as the sunniest in the app. Fail loudly instead;
+  // the step is idempotent and auto-retried.
+  if (buildings.length === 0) {
+    throw new Error(
+      `no buildings within 300 m of patio ${patioId} at [${centre[0]}, ${centre[1]}] — ` +
+        `refusing to write full-sun rows`,
+    )
+  }
 
   const samples = computeSeries({
     patioId,
