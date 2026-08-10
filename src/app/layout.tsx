@@ -13,9 +13,36 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const TITLE = "Golden Hour — Toronto patios in the sun";
+const DESCRIPTION =
+  "Live sun-coverage rankings for Toronto patios. Find where to drink in the sun, right now.";
+
+// Social crawlers (LinkedIn, Slack, iMessage) only follow absolute URLs, so
+// metadataBase must be a real origin. NEXT_PUBLIC_SITE_URL wins if set;
+// otherwise Vercel supplies the stable production domain (no protocol).
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : "http://localhost:3000");
+
 export const metadata: Metadata = {
-  title: "Golden Hour — Toronto patios in the sun",
-  description: "Live sun-coverage rankings for Toronto patios. Find where to drink in the sun, right now.",
+  metadataBase: new URL(SITE_URL),
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    url: "/",
+    siteName: "Golden Hour",
+    locale: "en_CA",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
 };
 
 export const viewport: Viewport = {
